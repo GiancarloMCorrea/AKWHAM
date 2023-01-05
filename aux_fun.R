@@ -1,5 +1,20 @@
 require(dplyr)
 
+#' Plot WAA residuals as bubble plots
+#' @param fit from wham
+#'
+plot_waa_resids <- function(fit){
+  ind <- fit$input$data$waa_pointer_ssb
+  pears <- (log(fit$rep$pred_waa[ind,,])-log(fit$input$data$waa[ind,,]))/sqrt(log(fit$input$data$waa_cv[ind,,]^2+1))
+  pears[!is.finite(pears)] <- NA
+  pears <-
+    data.frame(age=rep(seq_along(fit$ages), each=length(fit$years)),
+               year=rep(fit$years, times=length(fit$ages.lab)),
+               residual=as.numeric(pears))
+  ggplot(pears, aes(year, size=abs(residual), color=residual<0, y=age)) + geom_point()
+}
+
+
 #' Plot weight-at-age matrix estimates compared to data
 #' @param fit Fitted WHAM model that does not use empirical WAA
 #' @param plot Whether to plot (default) or not
@@ -9,15 +24,18 @@ require(dplyr)
 #'
 plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE){
   require(ggplot2);require(dplyr)
+  ind <- fit$input$data$waa_pointer_ssb
+  ## get SE for SSB matrix
   se <- summary(fit$sdrep, select='all')[,2]
-  se <- se[names(se)=='pred_waa_ssb']
+  se <- as.numeric(array(se[names(se)=='pred_waa'],
+                         dim=dim(fit$input$data$waa))[ind,,])
   if(length(se)==0)
-    stop("No ADREPORT variable for pred_waa_ssb found, update WHAM")
-  o <- as.numeric(fit$input$data$waa[2,,])
-  e <- as.numeric(fit$rep$pred_waa_ssb)
+    stop("No ADREPORT variable for pred_waa found, update WHAM")
+  o <- as.numeric(fit$input$data$waa[ind,,])
+  e <- as.numeric(fit$rep$pred_waa[ind,,])
   CV <- as.numeric(fit$input$data$waa_cv[2,,])
-  lwr <- o/exp(1.96*sqrt(log(1+((obs*CV)/o))^2))
-  upr <- o*exp(1.96*sqrt(log(1+((obs*CV)/o))^2))
+  lwr <- o/exp(1.96*sqrt(log(1+((o*CV)/o))^2))
+  upr <- o*exp(1.96*sqrt(log(1+((o*CV)/o))^2))
   waa <- data.frame(age=rep(fit$ages.lab, each=length(fit$years)),
                     year=rep(fit$years, times=length(fit$ages.lab)),
                     exp=e, obs=o, CV=CV, lwr=lwr, upr=upr,
@@ -25,7 +43,6 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE){
     mutate(obs=ifelse(CV==0, NA,obs),
            lwr=ifelse(CV==0, NA,lwr),
            upr=ifelse(CV==0, NA,upr)) %>%
-             #filter(CV>0) %>%
     mutate(age=factor(age, levels=fit$ages.lab),
            cohort=year-as.numeric(age))
   if(by.cohort){

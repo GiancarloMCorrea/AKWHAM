@@ -1,10 +1,11 @@
 ## rm(list = ls())
 require(dplyr)
 require(ggplot2)
+theme_set(theme_bw())
 library(wham)
 library(snowfall)
 source("simulation_functions.R")
-
+source("aux_fun.R")
 
 ### ------------------------------------------------------------
 ### First the self test of the original penalized likelihood model
@@ -66,31 +67,20 @@ fit_c$input$data$simulate_state <- fit_c$input$data$simulate_state*0
 ## causing some weird convergence failures
 fit_c$input$map$logit_selpars <- factor(NA*fit_c$input$par$logit_selpars)
 fit_c$input$map$selpars_re <- factor(NA*fit_c$input$par$selpars_re)
+fit_c$input$map$WAA_a <- factor(1:10) # turn on estimation of mean waa
 om <- fit_wham(fit_c$input, do.osa = FALSE, do.fit = TRUE,
                do.retro = FALSE, n.newton=0)
 om$par[which.max(abs(om$gr(om$opt$par)))]         # check the OM worked ok
 
 ## quick look at WAA estimates compared to data
-waassb <- summary(om$sdrep, select='all') %>% as.data.frame
-waassb <- waassb[grepl('pred_waa_ssb', x=rownames(waassb)),] %>%
-  cbind(age=rep(1:10, each=52), year=rep(1970:2021)) %>%
-  setNames(c('waa', 'se', 'age', 'year')) %>%
-  mutate(cohort=year-age-1, ymin=waa-1*se, ymax=waa+1*se)
-g <- ggplot(waassb, aes(year, y=waa, ymin=ymin, ymax=ymax,
-                   fill=factor(age), color=factor(age))) + geom_ribbon(alpha=.5)
-g
-g+facet_wrap('age', scales='free')
-g <- ggplot(filter(waassb, cohort>2005),
-            aes(age, y=waa, ymin=ymin, ymax=ymax, fill=factor(cohort), color=factor(cohort)))+
-  geom_ribbon(alpha=.5)
-g
-g+  facet_wrap('cohort')
-
+plot_waa_fit(om)
+plot_waa_fit(om, by.cohort=FALSE)
+plot_waa_resids(om)
 
 ### Run and save the simulations
 true <- summary(om$sdrep, select='all')[,1]
 ## test <- run_em(1, TRUE)
-nsim <- 20
+nsim <- 100
 sfInit(parallel=TRUE, cpus=5)
 sfExport('run_em','sim_fn','true', 'om')
 out <- sfLapply(1:nsim, function(i) run_em(i, sample.waa=TRUE))
