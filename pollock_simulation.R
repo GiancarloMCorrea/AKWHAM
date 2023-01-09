@@ -17,10 +17,16 @@ fit_a$input$data$simulate_state <- fit_a$input$data$simulate_state*0
 ## temporarily turning estimation of selectivity off since it was
 ## causing some weird convergence failures
 fit_a$input$map$logit_selpars <- factor(NA*fit_a$input$par$logit_selpars)
-fit_a$input$map$selpars_re <- factor(NA*fit_a$input$par$selpars_re)
+## fit_a$input$map$selpars_re <- factor(NA*fit_a$input$par$selpars_re)
 om <- fit_wham(fit_a$input, do.osa = FALSE, do.fit = TRUE,
                do.retro = FALSE, n.newton=0)
 om$par[which.max(abs(om$gr()))]         # check the OM worked ok
+
+om$input$par <- om$env$parList(par=om$opt$par)
+om2 <- fit_wham(om$input, do.osa = FALSE, do.fit = TRUE,
+               do.retro = FALSE, n.newton=0)
+om2$par[which.max(abs(om2$gr()))]         # check the OM worked ok
+
 
 ### Run and save the simulations
 ## test <- run_em(1)
@@ -73,7 +79,8 @@ om <- fit_wham(fit_c$input, do.osa = FALSE, do.fit = TRUE,
 om$par[which.max(abs(om$gr(om$opt$par)))]         # check the OM worked ok
 
 ## quick look at WAA estimates compared to data
-plot_waa_fit(om)
+plot_waa_fit(om, minyr=1990, maxyr=2009)
+ggsave('GOA_pollock/WAA_fit.png', width=7, height=5)
 plot_waa_fit(om, by.cohort=FALSE)
 plot_waa_resids(om)
 
@@ -99,10 +106,12 @@ results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
 ## (t)ime (s)eries we care about
 ts <- filter(results, !is.na(year) & par %in% c('log_F', 'log_SSB'))
 ## (sc)alar quantities we care about
-sc <- filter(results, is.na(year) &  !grepl('rho|pred_waa_ssb|WAA_re|NAA|FAA|FXS|resid|F_devs|logit_q_mat|selpars_re|q_re',par))
-waa <- filter(results, par=='pred_waa_ssb') %>% group_by(rep) %>%
+sc <- filter(results, is.na(year) &  !grepl('rho|pred_waa|WAA_re|NAA|FAA|FXS|resid|F_devs|logit_q_mat|selpars_re|q_re',par))
+## need to carefully splice out the second WAA matrix since
+## that's used for SSB.
+ind <- as.numeric(array(1:(4*52*10), dim=c(4,52,10))[2,,])
+waa <- filter(results, par=='pred_waa' & i %in% ind) %>% group_by(rep) %>%
   mutate(age=rep(1:10, each=52), year=rep(1970:2021, times=10))
-
 g1 <- ggplot(sc, aes(factor(i), re)) + geom_violin() + facet_wrap('par', scales='free')+
   geom_hline(yintercept=0, color=2) + coord_cartesian(ylim=.15*c(-1,1))
 g <- ggplot(ts, aes(year,y= re)) + #geom_line() +
@@ -110,11 +119,13 @@ g <- ggplot(ts, aes(year,y= re)) + #geom_line() +
   coord_cartesian(ylim=.15*c(-1,1))
 g2 <- add_ci(g, ci=c(.1,.5,.8), alpha=c(.2,.4,.6))
 g <- ggplot(waa, aes(year,re)) + facet_wrap('age')+ geom_hline(yintercept=0, color=2)+
-  coord_cartesian(ylim=.15*c(-1,1))
+  coord_cartesian(ylim=.5*c(-1,1)) + labs(y='Relative error')
 g3 <- add_ci(g, ci=c(.1,.5,.8), alpha=c(.2,.4,.6))
 g1
 g2
 g3
+ggsave('GOA_pollock/waa_relerror_iid.png', width=7, height=5)
+
 ### End of the fit_c simulation
 ### ------------------------------------------------------------
 

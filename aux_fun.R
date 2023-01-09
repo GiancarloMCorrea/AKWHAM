@@ -20,9 +20,10 @@ plot_waa_resids <- function(fit){
 #' @param plot Whether to plot (default) or not
 #' @param by.cohort Whether to plot grouped by cohort (default) or
 #'   by age
+#' @param minyr,maxyr The min/max year (or cohort) to plot
 #' @return Invisibly a data frame of WAA data and results
 #'
-plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE){
+plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100){
   require(ggplot2);require(dplyr)
   ind <- fit$input$data$waa_pointer_ssb
   ## get SE for SSB matrix
@@ -46,10 +47,12 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE){
     mutate(age=factor(age, levels=fit$ages.lab),
            cohort=year-as.numeric(age))
   if(by.cohort){
-    waa <- group_by(waa, cohort) %>% filter(n()>2) %>% ungroup
+    waa <- group_by(waa, cohort) %>%
+      filter(n()>2, cohort>minyr, cohort<maxyr) %>% ungroup
     g0 <- ggplot(waa, aes(as.numeric(age), obs, ymin=lwr, ymax=upr))+
       facet_wrap('cohort')
   } else {
+    waa <- filter(waa, year>minyr, year<maxyr)
     g0 <- ggplot(waa, aes(year, obs, ymin=lwr, ymax=upr))+
       facet_wrap('age', scales='free_y')
   }

@@ -9,12 +9,22 @@ sim_fn <- function(om, sample.waa=FALSE){
   input <- om$input
   simdata = om$simulate(complete=TRUE)
   ## no simulator for the WAA so do it manually here
-  if(sample.waa)
-    simdata$waa[simdata$waa_pointer_ssb,,] <-
-      matrix(exp(rnorm(520, mean=log(om$rep$pred_waa_ssb), sd=.1)), nrow=52)
+  if(sample.waa){
+    ## not currently built into WHAM so do it here
+    ind <- simdata$waa_pointer_ssb
+    nages <- om$input$data$n_ages
+    nyr <- om$input$data$n_years_model # plus proj ?
+    ## simulate full data, CV=0 will be ignored in the model
+    simdata$waa[ind,,] <-
+      matrix(exp(rnorm(n=nages*nyr,
+                       mean=log(om$rep$pred_waa[ind,,]),
+                       sd=sqrt(log(1+om$input$data$waa_cv[ind,,])))),
+             nrow=nyr)
+  }
   ## do I have to manually ditch missing values for all observations?
   ##  simdata$agg_indices[omdata$agg_indices==-999] <- -999
-  input$data <- simdata
+    input$data <- simdata
+
   return(input)
 }
 run_em <- function(i, sample.waa=FALSE){
