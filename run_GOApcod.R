@@ -1,6 +1,9 @@
 # Install WHAM package (growth branch):
 # remotes::install_github(repo = 'gmoroncorrea/wham', ref='growth', INSTALL_opts = c("--no-docs", "--no-multiarch", "--no-demo"))
 
+# Set you WD:
+setwd("~/GitHub/AKWHAM")
+
 rm(list = ls())
 require(dplyr)
 require(ggplot2)
@@ -13,11 +16,12 @@ source('aux_fun.R')
 # SS files and outputs:
 # SS model can be found here: 
 # https://github.com/pete-hulson/goa_pcod/tree/master/2022/Stock_Synthesis_files/Model19.1a%20(22)%20-%20wADFG
-data_file = r4ss::SS_readdat_3.30(file = 'C:/Users/moroncog/Documents/GitHub/goa_pcod/2022/Stock_Synthesis_files/Model19.1a (22) - wADFG/GOAPcod2022Oct25_wADFG.dat')
-SS_report = r4ss::SS_output(dir = 'C:/Users/moroncog/Documents/GitHub/goa_pcod/2022/Stock_Synthesis_files/Model19.1a (22) - wADFG') # from OM
+# Change Month column from 1 to 7 for surveys (len comps and CAAL) 
+data_file = r4ss::SS_readdat_3.30(file = 'SS_models/GOA_pcod/GOAPcod2022Oct25_wADFG.dat')
+SS_report = r4ss::SS_output(dir = 'SS_models/GOA_pcod') # from OM
 
 # Some model parameters:
-mycols = c("#E69F00", "#0072B2")
+mycols = c("#D16103", "#52854C")
 n_ages = 10
 length_vector = SS_report$lbins
 min_year = SS_report$startyr
@@ -29,6 +33,7 @@ GWpars = c(SS_report$Growth_Parameters$K, SS_report$Growth_Parameters$Linf,
            SS_report$endgrowth$SD_Beg[2], SS_report$endgrowth$SD_Beg[11])
 Q_pars = c(exp(SS_report$parameters$Value[SS_report$parameters$Label == "LnQ_base_Srv(4)"]),
            exp(SS_report$parameters$Value[SS_report$parameters$Label == "LnQ_base_LLSrv(5)"]))
+LAA_SS = as.matrix(SS_report$growthseries[1,6:15])
 # Selectivity parameters (main):
 int_selPos = grep(pattern =  "Size_DblN", x = SS_report$parameters$Label)[1]
 SelecParams = SS_report$parameters[int_selPos:nrow(SS_report$parameters), ]
@@ -153,16 +158,15 @@ wham_data$waa_pointer_ssb = 3
 wham_data$waa_pointer_jan1 = 3
 wham_data$maturity = matrix(rep(SS_report$endgrowth[2:(n_ages+1),18], times = max_year - min_year + 1),
                             ncol = n_ages, nrow = max_year - min_year + 1, byrow = TRUE) 
-
-wham_data$Fbar_ages = 3L:10L
+wham_data$Fbar_ages = 1L:10L
 wham_data$percentSPR = 60
 wham_data$percentFXSPR = 100
 wham_data$percentFMSY = 100
 wham_data$XSPR_R_avg_yrs = 1:n_years
 wham_data$XSPR_R_opt = 2
 wham_data$simulate_period = c(1,0)
-wham_data$bias_correct_process = 1
-wham_data$bias_correct_observation = 1
+wham_data$bias_correct_process = 0
+wham_data$bias_correct_observation = 0
 
 # Ecov information (for Q - index 2):
 env1 = numeric(n_years)
@@ -173,7 +177,7 @@ n_env_years = length(data_file$envdat$Yr)
 ecov <- list(
   label = c("env1"),
   mean = matrix(c(env1), ncol = 1),
-  logsigma = matrix(log(0.1), ncol = 1, nrow = n_env_years), # sigma = 0.2
+  logsigma = matrix(log(0.2), ncol = 1, nrow = n_env_years), # sigma = 0.2
   year = data_file$envdat$Yr,
   use_obs = matrix(1L, ncol=1, nrow=n_env_years),
   lag = list(rep(0, times = 8)),
@@ -183,25 +187,33 @@ ecov <- list(
   indices = list(2),
   how = c(1))
 
-# Prepare input object:
-input = prepare_wham_input(model_name="goa_cod_1",
+
+# -------------------------------------------------------------------------
+# Prepare input object: use vB
+input_a = prepare_wham_input(model_name="goa_cod_1",
                                selectivity=list(model = rep('len-double-normal', times = 5),
                                                 re = c(rep('iid', times = 4), 'none'),
+                                                #re = c(rep('none', times = 5)),
                                                 initial_pars=list(selpars1, selpars2, selpars3,
                                                                   selpars4, selpars5),
                                                 fix_pars = list(5:6,5:6,4:6,NULL,1:6),
+                                                #fix_pars = list(1:6,1:6,1:6,1:6,1:6),
                                                 n_selblocks = 5),
                                M = list(model = 'constant', re = 'none',
                                         initial_means = SS_report$Natural_Mortality[1,5],
                                         est_ages = 1),
-                               NAA_re = list(sigma="rec", cor = 'iid', N1_model = 0,
+                               NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                              recruit_model = 2,
-                                             N1_pars = as.vector(as.matrix(NAA_SS[1,])),
+                                             #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
+                                             N1_pars = c(NAA_SS[1,1], 0),
                                              recruit_pars = mean(NAA_SS[,1])),
                                growth = list(model = 'vB_classic',
-                                             re = c('none', 'none', 'none', 'none', 'none'),
-                                             init_vals = GWpars,
-                                             est_pars = 1:5),
+                                             re = c('none', 'none', 'none'),
+                                             init_vals = GWpars[1:3],
+                                             est_pars = 1:3,
+                                             SD_vals = GWpars[4:5],
+                                             SD_est = 1:2
+                                             ),
                                LW = list(re = c('none', 'none'),
                                      init_vals = LWpars),
                                catchability = list(re = c('none', 'none'),
@@ -211,90 +223,35 @@ input = prepare_wham_input(model_name="goa_cod_1",
                                ecov = ecov,
                                basic_info = wham_data)
 
-# Update some input information:
-input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
-input$map$log_NAA_sigma = factor(NA) # fix sigma
-input$map$log_N1_pars = factor(rep(NA, times = length(input$par$log_N1_pars))) # fix init NAA
-# log_NAA initial values:
-input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
-# Fishing mortality values:
-F_matrix = as.matrix(SS_report$timeseries[SS_report$timeseries$Yr %in% wham_data$years,grep(pattern = 'F:_', x = colnames(SS_report$timeseries))])
-small_F = 0.0001 # small number F1 for fishery 3
-input$par$log_F1 = c(log(F_matrix[1,1]),log(F_matrix[1,2]),log(small_F)) 
-input$map$log_F1 = factor(c(1,2,NA)) # fix last F
-F_devs = log(F_matrix)[-1,] - log(F_matrix)[-n_years,] # only for fishery 1 and 2
-F_devs[which(is.nan(F_devs))] = 0
-F_devs[10,3] = log(F_matrix[11,3]) - log(small_F)
-input$par$F_devs = F_devs # set F_devs
-input$map$F_devs = factor(c(1:((n_years-1)*2), rep(NA, times = 9), 91:126))
-# Add time block for M 2014-2016:
-tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
-tmpMmatrix[wham_data$years %in% 2014:2016] = 1
-input$map$M_re = factor(as.vector(tmpMmatrix))
-# Deviations in selectivity parameters: 
-SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% wham_data$years,]
-# FISHERY 1:
-fleet = 1
-tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
-par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
-par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
-input$par$selpars_re[1:(n_years*4)] = c(par1, par2, par3, par4)
-# FISHERY 2:
-fleet = 2
-tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
-par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
-par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
-input$par$selpars_re[(n_years*4+1):(n_years*8)] = c(par1, par2, par3, par4)
-# FISHERY 3:
-fleet = 3
-tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
-par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
-par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-input$par$selpars_re[(n_years*8+1):(n_years*11)] = c(par1, par2, par3)
-# INDEX 1:
-fleet = 4
-tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
-par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
-par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
-par5 = -log((input$data$selpars_upper[fleet,29]-tmpSelex$Par5)/(tmpSelex$Par5-input$data$selpars_lower[fleet,29]))-input$par$logit_selpars[fleet,29]
-par6 = -log((input$data$selpars_upper[fleet,30]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,30]))-input$par$logit_selpars[fleet,30]
-input$par$selpars_re[(n_years*11+1):(n_years*17)] = c(par1, par2, par3, par4, par5, par6)
-# Fix deviates and selectivity parameters
-input$map$selpars_re = rep(factor(NA), times = length(input$par$selpars_re)) # fix deviates
-input$map$sel_repars = rep(factor(NA), times = length(input$par$sel_repars)) # fix random effect parameters
-input$map$logit_selpars = rep(factor(NA), times = length(input$par$logit_selpars)) # fix sel parameters
-# No random effects:
-input$random = NULL
+# update some inputs as SS model:
+input_a = post_input_GOApcod(input_a, SS_report, NAA_SS)
+#input_a$map$log_N1_pars = factor(rep(NA, times = length(input_a$par$log_N1_pars)))
+input_a$map$log_N1_pars = factor(c(1,NA))
+# no random effects:
+input_a$random <- NULL
 
 #Run model:
-fit = fit_wham(input, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE)
-save(fit, file = 'GOA_pcod/fit.RData')
+fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
+check_convergence(fit_a)
+save(fit_a, file = 'GOA_pcod/fit_a.RData')
 
 # Make plots
-dir.create(path = 'GOA_pcod/fit')
-plot_wham_output(mod = fit, dir.main = 'GOA_pcod/fit', out.type = 'pdf')
-
+dir.create(path = 'GOA_pcod/fit_a')
+plot_wham_output(mod = fit_a, dir.main = 'GOA_pcod/fit_a', out.type = 'pdf')
 
 # -------------------------------------------------------------------------
 # Plot SSB:
 
 # Get SSB from SS:
 SS_SSB = SS_report$derived_quants[grep(pattern = 'SSB_', x = SS_report$derived_quants$Label),]
-data1 = cbind(data.frame(model = 'StockSynthesis', year = fit$years), 
+data1 = cbind(data.frame(model = 'SS', year = fit_a$years), 
               SS_SSB[3:48, c('Value', 'StdDev')])
 colnames(data1)[3:4] = c('est', 'sd')
 data1$ssb_min = data1$est - 1.96*data1$sd
 data1$ssb_max = data1$est + 1.96*data1$sd
 
 # WHAM model:
-this_model = fit
+this_model = fit_a
 model_name = 'WHAM'
 tmp = data.frame(name = names(this_model$sdrep$value),
                  est = this_model$sdrep$value, sd = this_model$sdrep$sd)
@@ -314,6 +271,11 @@ ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
   scale_fill_manual(values = mycols) +
   scale_color_manual(values = mycols) +
   theme_bw() +
-  theme(legend.position='top')
+  guides(fill=guide_legend(title=NULL,nrow = 1), 
+         color=guide_legend(title=NULL,nrow = 1),
+         shape = guide_legend(override.aes = list(size = 0.8))) +
+  theme(legend.position=c(0.5,0.95), 
+        legend.text = element_text(size = 10),
+        legend.background = element_blank())
 ggsave(filename = 'GOA_pcod/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
 

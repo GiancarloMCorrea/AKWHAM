@@ -65,41 +65,40 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100)
   return(invisible(waa))
 }
 
-
 get_caal_from_SS = function(caal_SSdata, fleet, model_years, model_lengths, model_ages) {
-
+  
   # Filter data and remove age0 if present
   this_data = caal_SSdata[caal_SSdata$FltSvy == fleet,]
-  if(colnames(this_data)[10] == 'a0') this_data = this_data[-10]
-
+  if(colnames(this_data)[10] == 'a0') this_data = this_data[-10] 
+  
   #Create output objects
   caal_array = array(0, dim = c(length(model_years), length(model_lengths), length(model_ages)))
   Neff_matrix = matrix(0, nrow = length(model_years), ncol = length(model_lengths))
   use_matrix = matrix(-1, nrow = length(model_years), ncol = 1)
-
+  
   # Some relevant information:
   data_years = unique(this_data$Yr)
   len_bin = model_lengths[2] - model_lengths[1]
   age_names = colnames(this_data[,10:ncol(this_data)])
   data_ages = as.numeric(gsub(pattern = 'a', replacement = '', x = age_names))
-
+  
   # New length bins:
-  this_data$Lbin_hi = as.numeric(as.character(cut(x = this_data$Lbin_lo,
+  this_data$Lbin_hi = as.numeric(as.character(cut(x = this_data$Lbin_lo, 
       breaks = seq(from = model_lengths[1] - len_bin*0.5, to = model_lengths[length(model_lengths)] + len_bin*0.5, by = len_bin),
       labels = model_lengths)))
 
   # Standardize data (sum = 0) and then multiply by Nsamps:
   this_data[,10:ncol(this_data)] = (this_data[,10:ncol(this_data)]/rowSums(this_data[,10:ncol(this_data)]))*this_data$Nsamp
-
+  
   # Sum information by new length bins
-  prop_data = this_data %>%
+  prop_data = this_data %>% 
               dplyr::group_by(Yr, Lbin_hi) %>%
               dplyr::summarise(across(c(age_names[1]:age_names[length(age_names)]), ~ mean(.x)))
-  eff_data = this_data %>%
+  eff_data = this_data %>% 
                 dplyr::group_by(Yr, Lbin_hi) %>%
                 dplyr::summarise(Neff = sum(Nsamp))
-
-
+  
+  
   for(i in seq_along(data_years)) {
     tmp_data = prop_data[prop_data$Yr == data_years[i], ]
     tmp_eff_data = eff_data[eff_data$Yr == data_years[i], ]
@@ -107,10 +106,10 @@ get_caal_from_SS = function(caal_SSdata, fleet, model_years, model_lengths, mode
     Neff_matrix[match(data_years[i], model_years),match(tmp_data$Lbin_hi, model_lengths)] = tmp_eff_data$Neff
     use_matrix[match(data_years[i], model_years),1] = 1
   }
-
+  
   output = list(caal = caal_array, Neff = Neff_matrix, use = use_matrix)
   return(output)
-
+  
 }
 
 post_input_pollock = function(input, base_input) {
@@ -134,26 +133,27 @@ post_input_pollock = function(input, base_input) {
   # data agg index sigma
   input$data$agg_index_sigma = base_input$data$agg_index_sigma
   # Ecov
-  input$par$Ecov_re = base_input$par$Ecov_re
+  #input$par$Ecov_re = base_input$par$Ecov_re # how this impacts the model?
   # Selectivity
   input$data$selpars_lower[,13:16] = base_input$data$selpars_lower[,13:16]
   input$data$selpars_upper[,13:16] = base_input$data$selpars_upper[,13:16]
   input$par$logit_selpars[,1:16] = base_input$par$logit_selpars
   input$par$selpars_re[1:104] = base_input$par$selpars_re[1:104]
-  input$map$selpars_re = factor(c(1:104, rep(NA, 104)))
+  #input$map$selpars_re = factor(c(1:104, rep(NA, 104)))
+  input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
   input$map$sel_repars = base_input$map$sel_repars
 
   return(input)
 }
 
 get_aging_error_matrix = function(obs_age, sd) {
-
+  
   out_matrix = matrix(NA, ncol = length(obs_age), nrow = length(obs_age))
-
+  
   for(i in seq_along(obs_age)) {
-
+    
     for(j in seq_along(obs_age)) {
-
+     
       # if(i > 1) {
       #   if((j == 1) | (j == length(obs_age))) {
       #     out_matrix[j,i] = 1 - pnorm(q = (j-obs_age[i])/sd[i])
@@ -168,11 +168,159 @@ get_aging_error_matrix = function(obs_age, sd) {
           out_matrix[j,i] = pnorm(q = (j+1-obs_age[i])/sd[i]) - pnorm(q = (j-obs_age[i])/sd[i])
         }
       #}
-
+      
     }
-
+    
   }
-
+  
   return(out_matrix)
+  
+}
 
+post_input_GOApcod = function(input, SS_report, NAA_SS) {
+  
+  years = input$years
+  n_years = length(years)
+  n_ages = input$data$n_ages
+
+  input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
+  input$map$log_NAA_sigma = factor(NA) # fix sigma
+  # log_NAA initial values:
+  input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
+  # Fishing mortality values:
+  F_matrix = as.matrix(SS_report$timeseries[SS_report$timeseries$Yr %in% years,grep(pattern = 'F:_', x = colnames(SS_report$timeseries))])
+  small_F = 0.0001 # small number F1 for fishery 3
+  input$par$log_F1 = c(log(F_matrix[1,1]),log(F_matrix[1,2]),log(small_F)) 
+  input$map$log_F1 = factor(c(1,2,NA)) # fix last F
+  F_devs = log(F_matrix)[-1,] - log(F_matrix)[-n_years,] # only for fishery 1 and 2
+  F_devs[which(is.nan(F_devs))] = 0
+  F_devs[10,3] = log(F_matrix[11,3]) - log(small_F)
+  input$par$F_devs = F_devs # set F_devs
+  input$map$F_devs = factor(c(1:((n_years-1)*2), rep(NA, times = 9), 91:126))
+  # Add time block for M 2014-2016:
+  input$par$M_re = matrix(rep(log(SS_report$Z_at_age$`0`[SS_report$Z_at_age$Yr %in% wham_data$years]) - log(SS_report$Natural_Mortality[1,5]), times = n_ages), ncol = n_ages)
+  tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
+  tmpMmatrix[years %in% 2014:2016] = 1
+  input$map$M_re = factor(as.vector(tmpMmatrix))
+  # Deviations in selectivity parameters (initial values): 
+  SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% years,]
+  # FISHERY 1:
+  fleet = 1
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
+  par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
+  par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
+  par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
+  input$par$selpars_re[1:(n_years*4)] = c(par1, par2, par3, par4)
+  # FISHERY 2:
+  fleet = 2
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
+  par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
+  par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
+  par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
+  input$par$selpars_re[(n_years*4+1):(n_years*8)] = c(par1, par2, par3, par4)
+  # FISHERY 3:
+  fleet = 3
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
+  par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
+  par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
+  input$par$selpars_re[(n_years*8+1):(n_years*11)] = c(par1, par2, par3)
+  # INDEX 1:
+  fleet = 4
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
+  par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
+  par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
+  par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
+  par5 = -log((input$data$selpars_upper[fleet,29]-tmpSelex$Par5)/(tmpSelex$Par5-input$data$selpars_lower[fleet,29]))-input$par$logit_selpars[fleet,29]
+  par6 = -log((input$data$selpars_upper[fleet,30]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,30]))-input$par$logit_selpars[fleet,30]
+  input$par$selpars_re[(n_years*11+1):(n_years*17)] = c(par1, par2, par3, par4, par5, par6)
+  # Selectivity blocks/deviates (mapping):
+  # Fishery 1:
+  map_f1_par1 = c(1:13, rep(14, times = 15), rep(15, times = 2), rep(16, times = 10), rep(NA, times = 6))
+  map_f1_par2 = c(rep(NA, times = 13), rep(17, times = 15), rep(18, times = 2), rep(19, times = 10), rep(20, times = 6))
+  map_f1_par3 = c(21:33, rep(34, times = 15), rep(35, times = 2), rep(36, times = 10), rep(37, times = 6))
+  map_f1_par4 = c(38:50, rep(51, times = 15), rep(52, times = 2), rep(53, times = 10), rep(54, times = 6))
+  # Fishery 2:
+  map_f2_par1 = c(NA, 55:66, rep(67, times = 15), rep(68, times = 2), rep(69, times = 10), rep(70, times = 6))
+  map_f2_par2 = c(rep(NA, times = 13), rep(71, times = 15), rep(72, times = 2), rep(73, times = 10), rep(74, times = 6))
+  map_f2_par3 = c(NA, 75:86, rep(87, times = 15), rep(88, times = 2), rep(89, times = 10), rep(90, times = 6))
+  map_f2_par4 = c(rep(NA, times = 13), rep(NA, times = 15), rep(NA, times = 2), rep(NA, times = 10), rep(NA, times = 6))
+  # Fishery 3:
+  map_f3_par1 = c(rep(NA, times = 40), rep(91, times = 6))
+  map_f3_par2 = c(rep(NA, times = 40), rep(92, times = 6))
+  map_f3_par3 = c(rep(NA, times = 40), rep(93, times = 6))
+  # Index 1:
+  map_i1_par1 = c(rep(NA, times = 19), rep(94, times = 10), rep(95, times = 17))
+  map_i1_par2 = c(rep(NA, times = 19), rep(96, times = 10), rep(97, times = 17))
+  map_i1_par3 = c(rep(NA, times = 19), rep(98, times = 10), rep(99, times = 17))
+  map_i1_par4 = c(rep(NA, times = 19), rep(100, times = 10), rep(101, times = 17))
+  map_i1_par5 = c(rep(NA, times = 19), rep(102, times = 10), rep(103, times = 17))
+  map_i1_par6 = c(rep(NA, times = 19), rep(NA, times = 10), rep(NA, times = 17))
+  # Now merge all vectors:
+  # input$map$selpars_re = factor(c(map_f1_par1,map_f1_par2,map_f1_par3,map_f1_par4,
+  #                          map_f2_par1,map_f2_par2,map_f2_par3,map_f2_par4,
+  #                          map_f3_par1,map_f3_par2,map_f3_par3,
+  #                          map_i1_par1,map_i1_par2,map_i1_par3,map_i1_par4,map_i1_par5,map_i1_par6))
+  input$map$selpars_re = factor(rep(NA, times = length(input$map$selpars_re)))
+  # Fix process error for selectivity:
+  input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
+  # Fix selectivity parameters as in SS
+  input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
+  #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
+  # Fix process error for Ecov:
+  input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
+
+  return(input)
+}
+
+post_input_EBSpcod = function(input, SS_report, NAA_SS) {
+  
+  years = input$years
+  n_years = length(years)
+  n_ages = input$data$n_ages
+
+  # Update some input information:
+  input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
+  input$map$log_NAA_sigma = factor(NA) # fix sigma
+  # log_NAA initial values:
+  input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
+  # Fishing mortality values:
+  input$par$log_F1 = log(0.18) # as in SS
+  Fts = SS_report$derived_quants[grep(pattern = 'F_', x = SS_report$derived_quants$Label),]
+  Fts = Fts[1:n_years, 'Value']
+  F_devs = log(Fts)[-1] - log(Fts)[-n_years]
+  input$par$F_devs[,1] = F_devs # set F_devs
+  # Deviations in selectivity parameters: 
+  SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% wham_data$years,]
+  # FISHERY 1:
+  fleet = 1
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par3 = -log((input$data$selpars_upper[fleet,37]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,37]))-input$par$logit_selpars[fleet,37]
+  par6 = -log((input$data$selpars_upper[fleet,40]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,40]))-input$par$logit_selpars[fleet,40]
+  input$par$selpars_re[1:(n_years*2)] = c(par3, par6)
+  # INDEX 1:
+  fleet = 2
+  tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
+  par1 = -log((input$data$selpars_upper[fleet,35]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,35]))-input$par$logit_selpars[fleet,35]
+  par3b = -log((input$data$selpars_upper[fleet,37]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,37]))-input$par$logit_selpars[fleet,37]
+  input$par$selpars_re[(n_years*2+1):(n_years*4)] = c(par1, par3b)
+  # Selectivity blocks/deviates (mapping):
+  # Fishery 1:
+  map_f1_par3 = 1:n_years
+  map_f1_par6 = 1:n_years + n_years
+  # Index 1:
+  map_f2_par1 = c(rep(NA, times = 5), 93:133)
+  map_f2_par3 = c(rep(NA, times = 5), 134:174)
+  # Now merge all vectors:
+  #input$map$selpars_re = factor(c(map_f1_par3, map_f1_par6, map_f2_par1, map_f2_par3))
+  input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
+  # Fix process error for selectivity:
+  input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
+  # Fix selectivity parameters as in SS
+  input$map$logit_selpars = factor(c(rep(NA, times = 68), 1:3, NA, 4:5, rep(NA, times = 4), 6, NA)) 
+
+  return(input)
 }
