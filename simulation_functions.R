@@ -5,35 +5,17 @@ add_ci <- function(g, ci, alpha, ...){
                         geom = 'ribbon', alpha = alpha[ii],...)
   g
 }
-sim_fn <- function(om, sample.waa=FALSE){
-  input <- om$input
-  simdata = om$simulate(complete=TRUE)
-  ## no simulator for the WAA so do it manually here
-  if(sample.waa){
-    ## not currently built into WHAM so do it here
-    ind <- simdata$waa_pointer_ssb
-    nages <- om$input$data$n_ages
-    nyr <- om$input$data$n_years_model # plus proj ?
-    ## simulate full data, CV=0 will be ignored in the model
-    simdata$waa[ind,,] <-
-      matrix(exp(rnorm(n=nages*nyr,
-                       mean=log(om$rep$pred_waa[ind,,]),
-                       sd=sqrt(log(1+om$input$data$waa_cv[ind,,])))),
-             nrow=nyr)
-  }
-  ## do I have to manually ditch missing values for all observations?
-  ##  simdata$agg_indices[omdata$agg_indices==-999] <- -999
-    input$data <- simdata
 
-  return(input)
-}
-run_em <- function(i, sample.waa=FALSE){
+run_em <- function(i){
   library(wham)
   set.seed(i)
   om$retape(FALSE)
-  siminput <- sim_fn(om, sample.waa)
-  tfit <- fit_wham(siminput, do.fit=TRUE, do.osa = F, do.retro = F,
-                   MakeADFun.silent = T, n.newton=0)
+  input <- om$input
+  simdata = om$simulate(complete=TRUE)
+  input$data <- simdata
+  siminput <- input
+  tfit <- fit_wham(siminput, do.fit=TRUE, do.osa = FALSE, do.retro = FALSE,
+                   MakeADFun.silent = TRUE, n.newton=0)
     ## check for convergence
   ##  if(tfit$opt$convergence!=0) return(NULL)
   ind <- which.max(abs(tfit$gr(tfit$opt$par)))

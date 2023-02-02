@@ -19,7 +19,7 @@ load('aux_data/cv_survey.RData') # CV for observed WAA (survey)
 load('aux_data/asdrep.RData') # ADMB pollock model output
 # see here: https://github.com/afsc-assessments/GOApollock/blob/dev/pkwham/pkwham_test.R
 
-model_names = c('ADMB', 'emp_WHAM', 'iid_WHAM')
+model_names = c('ADMB', 'EWAA_WHAM', 'iid_WHAM')
 
 # Get SSB estimates from ADMB model
 SSBdata0 = cbind(model = model_names[1],
@@ -130,6 +130,15 @@ SSBdata1 = cbind(model = model_name, year=1970:2021,
 
 # -------------------------------------------------------------------------
 # iid WAA
+
+# Add CV and turnon likelihood for waa:
+cvsurvey = as.matrix(out_data)
+cvsurvey[is.na(cvsurvey)] = 0
+wham_data$waa_cv = array(0, dim = dim(wham_data$waa))
+wham_data$waa_cv[2,,] = cvsurvey
+wham_data$use_index_waa = matrix(0L, ncol = wham_data$n_indices, nrow = length(wham_data$years))
+wham_data$use_index_waa[17:52,1] = 1L
+
 input_b = prepare_wham_input(model_name = "pollock_b",
                             selectivity = list(model = c('double-logistic', 'age-specific', 'double-logistic', 
                                                        'double-logistic', 'age-specific', 'age-specific',
@@ -155,11 +164,6 @@ input_b = prepare_wham_input(model_name = "pollock_b",
                                                 q_upper = rep(1000, 6), prior_sd = rep(NA, 6)),
                             basic_info = wham_data)
 
-# weight-at-age CV:
-cvsurvey = as.matrix(out_data)
-cvsurvey[is.na(cvsurvey)] = 0
-input_b$data$waa_cv[2,,] = cvsurvey
-input_b$data$use_index_waa[,1] = 1
 # update some inputs:
 input_b = post_input_pollock(input_b, input)
 # random WAA only
@@ -190,7 +194,7 @@ plot_data = rbind(SSBdata0, SSBdata1, SSBdata2)
 plot_data$model = factor(plot_data$model, levels = model_names)
 
 # Plot SSB + uncertainty:
-ggplot(plot_data, aes(year, exp(est)*1e-06, ymin=exp(est-1.96*sd)*1e-06, ymax=exp(est+1.96*sd)*1e-06,
+p1 = ggplot(plot_data, aes(year, exp(est)*1e-06, ymin=exp(est-1.96*sd)*1e-06, ymax=exp(est+1.96*sd)*1e-06,
                       fill=model, color=model)) +
   ylim(0,NA) + labs(y='SSB (million tons)', x= NULL) +
   geom_ribbon(alpha=.25, color = NA) + geom_line(linewidth=1) +
@@ -198,45 +202,14 @@ ggplot(plot_data, aes(year, exp(est)*1e-06, ymin=exp(est-1.96*sd)*1e-06, ymax=ex
   scale_fill_manual(values = mycols) +
   scale_color_manual(values = mycols) +
   theme_bw() +
+  annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
          color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
+         shape = guide_legend(override.aes = list(size = 0.1))) +
   theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
+        legend.text = element_text(size = 7.5),
         legend.background = element_blank())
-ggsave(filename = 'GOA_pollock/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
-# Plot mean SSB
-ggplot(plot_data, aes(x = year, y = exp(est)*1e-06, color=model)) +
-  geom_line(linewidth = 1) +
-  ylim(0,NA) + 
-  labs(y='SSB (million tons)', x= NULL) +
-  labs( color=NULL) +
-  scale_color_manual(values = mycols) +
-  theme_bw() +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())
-ggsave(filename = 'GOA_pollock/compare_SSBmean.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
-# Plot with CV
-ggplot(plot_data, aes(x = year, y = sd/est, color=model)) +
-  geom_line(linewidth = 1) +
-  labs(y='CV (SSB)', x= NULL) +
-  labs( color=NULL) +
-  scale_color_manual(values = mycols) +
-  theme_bw() +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank()) 
-ggsave(filename = 'GOA_pollock/compare_SSBCV.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
+#ggsave(filename = 'GOA_pollock/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
 
 # Plot LAA and WAA over time ----------------------------------------------
 
@@ -245,19 +218,25 @@ colnames(WAA_data) = input$ages.lab
 rownames(WAA_data) = input$years
 WAA_plot = reshape2::melt(data = WAA_data, varnames = c('year', 'age'))
 
-ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
+p2 = ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
   geom_line(linewidth = 1, alpha = 0.7) +
   labs(y='WAA random effects', x= NULL) +
   labs( color=NULL) +
   scale_color_brewer(palette = 'Spectral') +
   theme_bw() +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
+  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
+  guides(fill=guide_legend(title=NULL,nrow = 2), 
+         color=guide_legend(title=NULL,nrow = 2),
+         shape = guide_legend(override.aes = list(size = 0.1))) +
+  theme(legend.position=c(0.5,0.9), 
+        legend.text = element_text(size = 7.5),
         legend.background = element_blank()) 
-ggsave(filename = 'GOA_pollock/WAA_re.png', width = 190, height = 120, units = 'mm', dpi = 500)
+#ggsave(filename = 'GOA_pollock/WAA_re.png', width = 190, height = 120, units = 'mm', dpi = 500)
+
+# Merge plots:
+png(filename = 'GOA_pollock/main_GOApollock.png', width = 190, height = 70, units = 'mm', res = 500)
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+dev.off()
 
 
 # -------------------------------------------------------------------------

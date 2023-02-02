@@ -134,12 +134,31 @@ wham_data$percentFMSY = 100
 wham_data$XSPR_R_avg_yrs = 1:n_years
 wham_data$XSPR_R_opt = 2
 wham_data$simulate_period = c(1,0)
-wham_data$bias_correct_process = 0
-wham_data$bias_correct_observation = 0
+wham_data$bias_correct_process = 1
+wham_data$bias_correct_observation = 1
 
 
 # -------------------------------------------------------------------------
 # Model with iid_y L1
+# Ecov information (for L1):
+env1 = read.csv('aux_data/sebs_summer_bottom_temp.csv')
+env2 = env1[env1$year %in% (min_year):(max_year) & env1$GCM_scen == 'gfdl_ssp126', ] 
+# no lag (model does better and also correlation is higher)
+env2$stand_index = (env2$mn_val - mean(env2$mn_val))/sd(env2$mn_val)
+
+ecov <- list(
+  label = c("Bering10K"),
+  mean = matrix(env2$stand_index, ncol = 1),
+  logsigma = matrix(log(0.2), ncol = 1, nrow = n_years), # sigma = 0.2
+  #logsigma = 'est_1', # estimate sigma. WHAM estimates Ecov_obs_sigma = 0.598 for all years
+  year = min_year:max_year,
+  use_obs = matrix(1L, ncol=1, nrow=n_years),
+  lag = list(rep(0, times = 7)),
+  ages = list(1:n_ages),
+  process_model = c('ar1'),
+  where = list('growth'),
+  where_subindex = 3, # on L1
+  how = c(0))
 
 # Prepare input object:
 input_a = prepare_wham_input(model_name="ebs_cod_1",
@@ -156,7 +175,7 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
                                NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                              recruit_model = 2,
                                              #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
-                                             N1_pars = c(NAA_SS[1,1], 0.2),
+                                             N1_pars = c(NAA_SS[1,1], 0.12),
                                              recruit_pars = mean(NAA_SS[,1])),
                                growth = list(model = 'Richards',
                                              re = c('none', 'none', 'ar1_y', 'none'),
@@ -170,12 +189,15 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
                                                    initial_q = Q_pars, q_lower = 0,
                                                    q_upper = 1000, prior_sd = NA),
                                age_comp = 'dirichlet-pool0',
+                               ecov = ecov,
                                basic_info = wham_data)
-
 
 # update some inputs as SS model:
 input_a = post_input_EBSpcod(input_a, SS_report, NAA_SS)
-input_a$random = "growth_re"
+input_a$map$Ecov_beta = factor(rep(NA, times = length(input_a$map$Ecov_beta))) # no effect on L1
+input_a$random = c("growth_re", "Ecov_re")
+# input_a$random = NULL
+# input_a$map$growth_repars = factor(rep(NA, times = length(input_a$map$growth_repars)))
 
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -200,25 +222,6 @@ SSBdata1$est = exp(SSBdata1$est)
 # -------------------------------------------------------------------------
 # Model with Ecov L1
 
-# Ecov information (for L1):
-env1 = read.csv('aux_data/sebs_summer_bottom_temp.csv')
-env2 = env1[env1$year %in% (min_year):(max_year) & env1$GCM_scen == 'gfdl_ssp126', ] 
-# no lag (model does better and also correlation is higher)
-env2$stand_index = (env2$mn_val - mean(env2$mn_val))/sd(env2$mn_val)
-
-ecov <- list(
-  label = c("Bering10K"),
-  mean = matrix(env2$stand_index, ncol = 1),
-  logsigma = matrix(log(0.2), ncol = 1, nrow = n_years), # sigma = 0.2
-  year = min_year:max_year,
-  use_obs = matrix(1L, ncol=1, nrow=n_years),
-  lag = list(rep(0, times = 7)),
-  ages = list(1:n_ages),
-  process_model = c('ar1'),
-  where = list('growth'),
-  where_subindex = 3, # on L1
-  how = c(1))
-
 # Prepare input object:
 input_b = prepare_wham_input(model_name="ebs_cod_2",
                              selectivity=list(model = c('len-double-normal', 'len-double-normal'),
@@ -234,7 +237,7 @@ input_b = prepare_wham_input(model_name="ebs_cod_2",
                              NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                            recruit_model = 2,
                                            #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
-                                           N1_pars = c(NAA_SS[1,1], 0.2),
+                                           N1_pars = c(NAA_SS[1,1], 0.12),
                                            recruit_pars = mean(NAA_SS[,1])),
                              growth = list(model = 'Richards',
                                            re = c('none', 'none', 'none', 'none'),
@@ -263,7 +266,7 @@ save(fit_b, file = 'EBS_pcod/fit_b.RData')
 
 # Make plots
 dir.create(path = 'EBS_pcod/fit_b')
-plot_wham_output(mod = fit_b, dir.main = 'EBS_pcod/fit_b', out.type = 'pdf')
+plot_wham_output(mod = fit_b, dir.main = 'EBS_pcod/fit_b', out.type = 'png')
 
 # Get SSB estimates:
 this_model = fit_b
@@ -295,7 +298,7 @@ plot_data$ssb_max = plot_data$ssb_max*1E-06
 plot_data$model = factor(plot_data$model, levels = c('SS','AR(1)_WHAM', 'ecov_WHAM'))
 
 # Make plot:
-ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
+p1 = ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
                       fill=model, color=model)) +
   ylim(0,NA) + labs(y='SSB (million mt)', x = NULL) +
   geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
@@ -303,13 +306,14 @@ ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
   scale_fill_manual(values = mycols) +
   scale_color_manual(values = mycols) +
   theme_bw() +
+  annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
          color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
+         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
+  theme(legend.position=c(0.5,0.1), 
         legend.text = element_text(size = 10),
         legend.background = element_blank())
-ggsave(filename = 'EBS_pcod/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
+#ggsave(filename = 'EBS_pcod/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
 
 
 # -------------------------------------------------------------------------
@@ -323,17 +327,31 @@ plot_data = rbind(LAA_a, LAA_b, LAA_SS)
 plot_data$model = factor(plot_data$model, levels = c('SS','AR(1)_WHAM', 'ecov_WHAM'))
 
 # Make plot:
-ggplot(plot_data, aes(year, L1, color=model)) +
+p2 = ggplot(plot_data, aes(year, L1, color=model)) +
   geom_line(lwd=1) +
   labs(y='Mean length-at-age 1 (cm)', x = NULL) +
   labs( color=NULL, fill=NULL) +
   scale_fill_manual(values = mycols) +
   scale_color_manual(values = mycols) +
   theme_bw() +
+  coord_cartesian(ylim=c(6, 18)) +
+  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
          color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
+         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
+  theme(legend.position=c(0.5,0.1), 
         legend.text = element_text(size = 10),
         legend.background = element_blank())
-ggsave(filename = 'EBS_pcod/compare_L1.png', width = 190, height = 120, units = 'mm', dpi = 500)
+# ggsave(filename = 'EBS_pcod/compare_L1.png', width = 190, height = 120, units = 'mm', dpi = 500)
+
+# Plot Ecov:
+p3 = plot_ecov_fit(fit_b, label = 'C')
+
+# Merge plots:
+png(filename = 'EBS_pcod/main_EBSpcod.png', width = 190, height = 160, units = 'mm', res = 500)
+gridExtra::grid.arrange(p1, p2, p3, ncol = 2)
+dev.off()
+
+
+# -------------------------------------------------------------------------
+

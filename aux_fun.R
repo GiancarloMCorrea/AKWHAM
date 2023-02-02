@@ -23,9 +23,10 @@ plot_waa_resids <- function(fit){
 #' @param minyr,maxyr The min/max year (or cohort) to plot
 #' @return Invisibly a data frame of WAA data and results
 #'
-plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100){
+plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100, sizeX = 10){
   require(ggplot2);require(dplyr)
   ind <- fit$input$data$waa_pointer_ssb
+  nages = length(fit$ages.lab)
   ## get SE for SSB matrix
   se <- summary(fit$sdrep, select='all')[,2]
   se <- as.numeric(array(se[names(se)=='pred_waa'],
@@ -50,17 +51,19 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100)
     waa <- group_by(waa, cohort) %>%
       filter(n()>2, cohort>minyr, cohort<maxyr) %>% ungroup
     g0 <- ggplot(waa, aes(as.numeric(age), obs, ymin=lwr, ymax=upr))+
-      facet_wrap('cohort')
+      facet_wrap('cohort')+
+      scale_x_continuous(name="Age", breaks=1:nages) 
   } else {
     waa <- filter(waa, year>minyr, year<maxyr)
     g0 <- ggplot(waa, aes(year, obs, ymin=lwr, ymax=upr))+
-      facet_wrap('age', scales='free_y')
+      facet_wrap('age', scales='free_y') +
+      theme(axis.text=element_text(size=sizeX))
   }
   g <- g0+
     geom_ribbon(aes(ymin=ymin,ymax=ymax), alpha=.3, fill=2)+
     geom_line(aes(y=exp), col=2, lwd=1)+
     geom_pointrange(fatten=2) +
-    labs(y='weight (kg)', x=NULL)
+    labs(y='Weight (kg)', x=NULL) 
   if(plot) print(g)
   return(invisible(waa))
 }
@@ -74,7 +77,7 @@ get_caal_from_SS = function(caal_SSdata, fleet, model_years, model_lengths, mode
   #Create output objects
   caal_array = array(0, dim = c(length(model_years), length(model_lengths), length(model_ages)))
   Neff_matrix = matrix(0, nrow = length(model_years), ncol = length(model_lengths))
-  use_matrix = matrix(-1, nrow = length(model_years), ncol = 1)
+  use_matrix = matrix(-1, nrow = length(model_years), ncol = length(model_lengths))
   
   # Some relevant information:
   data_years = unique(this_data$Yr)
@@ -104,7 +107,7 @@ get_caal_from_SS = function(caal_SSdata, fleet, model_years, model_lengths, mode
     tmp_eff_data = eff_data[eff_data$Yr == data_years[i], ]
     caal_array[match(data_years[i], model_years), match(tmp_data$Lbin_hi, model_lengths), match(data_ages, model_ages)] = as.matrix(tmp_data[,3:ncol(tmp_data)]/rowSums(tmp_data[,3:ncol(tmp_data)]))
     Neff_matrix[match(data_years[i], model_years),match(tmp_data$Lbin_hi, model_lengths)] = tmp_eff_data$Neff
-    use_matrix[match(data_years[i], model_years),1] = 1
+    use_matrix[match(data_years[i], model_years),match(tmp_data$Lbin_hi, model_lengths)] = 1
   }
   
   output = list(caal = caal_array, Neff = Neff_matrix, use = use_matrix)
@@ -138,9 +141,10 @@ post_input_pollock = function(input, base_input) {
   input$data$selpars_lower[,13:16] = base_input$data$selpars_lower[,13:16]
   input$data$selpars_upper[,13:16] = base_input$data$selpars_upper[,13:16]
   input$par$logit_selpars[,1:16] = base_input$par$logit_selpars
+  #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars))) # fix parameters
   input$par$selpars_re[1:104] = base_input$par$selpars_re[1:104]
-  #input$map$selpars_re = factor(c(1:104, rep(NA, 104)))
-  input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
+  input$map$selpars_re = factor(c(1:104, rep(NA, 104)))
+  #input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re))) # fix deviates
   input$map$sel_repars = base_input$map$sel_repars
 
   return(input)
@@ -185,6 +189,7 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
 
   input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
   input$map$log_NAA_sigma = factor(NA) # fix sigma
+  input$map$log_N1_pars = factor(c(1,NA))
   # log_NAA initial values:
   input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
   # Fishing mortality values:
@@ -260,16 +265,16 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   map_i1_par5 = c(rep(NA, times = 19), rep(102, times = 10), rep(103, times = 17))
   map_i1_par6 = c(rep(NA, times = 19), rep(NA, times = 10), rep(NA, times = 17))
   # Now merge all vectors:
-  # input$map$selpars_re = factor(c(map_f1_par1,map_f1_par2,map_f1_par3,map_f1_par4,
-  #                          map_f2_par1,map_f2_par2,map_f2_par3,map_f2_par4,
-  #                          map_f3_par1,map_f3_par2,map_f3_par3,
-  #                          map_i1_par1,map_i1_par2,map_i1_par3,map_i1_par4,map_i1_par5,map_i1_par6))
-  input$map$selpars_re = factor(rep(NA, times = length(input$map$selpars_re)))
+  input$map$selpars_re = factor(c(map_f1_par1,map_f1_par2,map_f1_par3,map_f1_par4,
+                           map_f2_par1,map_f2_par2,map_f2_par3,map_f2_par4,
+                           map_f3_par1,map_f3_par2,map_f3_par3,
+                           map_i1_par1,map_i1_par2,map_i1_par3,map_i1_par4,map_i1_par5,map_i1_par6))
+  #input$map$selpars_re = factor(rep(NA, times = length(input$map$selpars_re)))
   # Fix process error for selectivity:
   input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
   # Fix selectivity parameters as in SS
-  input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
-  #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
+  #input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
+  input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
   # Fix process error for Ecov:
   input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
 
@@ -295,17 +300,18 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   input$par$F_devs[,1] = F_devs # set F_devs
   # Deviations in selectivity parameters: 
   SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% wham_data$years,]
+  ncolSelex = ncol(input$data$selpars_upper)
   # FISHERY 1:
   fleet = 1
   tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-  par3 = -log((input$data$selpars_upper[fleet,37]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,37]))-input$par$logit_selpars[fleet,37]
-  par6 = -log((input$data$selpars_upper[fleet,40]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,40]))-input$par$logit_selpars[fleet,40]
+  par3 = -log((input$data$selpars_upper[fleet,ncolSelex-3]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,ncolSelex-3]))-input$par$logit_selpars[fleet,ncolSelex-3]
+  par6 = -log((input$data$selpars_upper[fleet,ncolSelex]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,ncolSelex]))-input$par$logit_selpars[fleet,ncolSelex]
   input$par$selpars_re[1:(n_years*2)] = c(par3, par6)
   # INDEX 1:
   fleet = 2
   tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
-  par1 = -log((input$data$selpars_upper[fleet,35]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,35]))-input$par$logit_selpars[fleet,35]
-  par3b = -log((input$data$selpars_upper[fleet,37]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,37]))-input$par$logit_selpars[fleet,37]
+  par1 = -log((input$data$selpars_upper[fleet,ncolSelex-5]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,ncolSelex-5]))-input$par$logit_selpars[fleet,ncolSelex-5]
+  par3b = -log((input$data$selpars_upper[fleet,ncolSelex-3]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,ncolSelex-3]))-input$par$logit_selpars[fleet,ncolSelex-3]
   input$par$selpars_re[(n_years*2+1):(n_years*4)] = c(par1, par3b)
   # Selectivity blocks/deviates (mapping):
   # Fishery 1:
@@ -318,9 +324,56 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   #input$map$selpars_re = factor(c(map_f1_par3, map_f1_par6, map_f2_par1, map_f2_par3))
   input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
   # Fix process error for selectivity:
+  #input$par$sel_repars[,1] = log(0.5) # increase sigma selex
   input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
   # Fix selectivity parameters as in SS
-  input$map$logit_selpars = factor(c(rep(NA, times = 68), 1:3, NA, 4:5, rep(NA, times = 4), 6, NA)) 
+  #input$map$logit_selpars = factor(c(rep(NA, times = 68), 1:3, NA, 4:5, rep(NA, times = 4), 6, NA)) 
+  input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
 
   return(input)
+}
+
+plot_ecov_fit <- function(mod, label = ""){
+
+  require(ggplot2);require(dplyr)
+
+  dat = mod$env$data
+  years_full <- mod$years
+
+  ecov.pred = mod$rep$Ecov_x
+  ecov.obs = dat$Ecov_obs[1:dat$n_years_Ecov,,drop=F]
+  # ecov.obs.sig = mod$rep$Ecov_obs_sigma # Ecov_obs_sigma now a derived quantity in sdrep
+  if(class(mod$sdrep)[1] == "sdreport"){
+    sdrep = summary(mod$sdrep)
+  } else {
+    sdrep = mod$sdrep
+  }
+
+  ecov.obs.sig = mod$rep$Ecov_obs_sigma 
+  ecov.use = dat$Ecov_use_obs[1:dat$n_years_Ecov,,drop=F]
+  ecov.obs.sig = ecov.obs.sig[1:dat$n_years_Ecov,,drop=F]
+  ecov.obs.sig[ecov.use == 0] <- NA
+  ecov.pred.se = matrix(sdrep[rownames(sdrep) %in% "Ecov_x",2], ncol=dat$n_Ecov)
+
+  # default: don't plot the padded entries that weren't used in ecov likelihood
+  ecov.res = (ecov.obs - ecov.pred[1:dat$n_years_Ecov,]) / ecov.obs.sig # standard residual (obs - pred)
+  ecovs <- 1:dat$n_Ecov
+
+  plot_dat = data.frame(years = years_full, obs = ecov.obs[,1], se = ecov.obs.sig[,1])
+  plot_dat$lwr = plot_dat$obs - 1.96 * plot_dat$se
+  plot_dat$upr = plot_dat$obs + 1.96 * plot_dat$se
+  plot_dat$exp = ecov.pred[,1]
+  plot_dat$exp_se = ecov.pred.se[,1]
+  plot_dat$ymin = plot_dat$exp - 1.96 * plot_dat$exp_se
+  plot_dat$ymax = plot_dat$exp + 1.96 * plot_dat$exp_se
+
+  g0 <- ggplot(plot_dat, aes(as.numeric(years), obs, ymin=lwr, ymax=upr))+
+    geom_ribbon(aes(ymin=ymin,ymax=ymax), alpha=.3, fill=2)+
+    geom_line(aes(y=exp), col=2, lwd=1)+
+    geom_pointrange(fatten=2) +
+    theme_bw()+
+    annotate("text", label = label, x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
+    labs(y='Temperature Bering10K index', x=NULL) 
+
+  return(g0)
 }
