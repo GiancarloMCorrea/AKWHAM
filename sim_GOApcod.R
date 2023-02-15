@@ -40,6 +40,9 @@ OMinput$data$simulate_state <- OMinput$data$simulate_state*0 # why turn this off
 OMinput$data$index_caal_Neff = OMinput$data$index_caal_Neff*(1/0.14)
 OMinput$data$catch_caal_Neff = OMinput$data$catch_caal_Neff*(1/0.14)
 OMinput$data$obs$val[OMinput$data$obs$type == 'catchcaal' | OMinput$data$obs$type == 'indexcaal'] = OMinput$data$obs$val[OMinput$data$obs$type == 'catchcaal' | OMinput$data$obs$type == 'indexcaal']*(1/0.14)
+#Fix selectivity:
+OMinput$map$logit_selpars = factor(rep(NA, times = length(OMinput$map$logit_selpars)))
+OMinput$map$selpars_re = factor(rep(NA, times = length(OMinput$map$selpars_re)))
 # Run OM again:
 om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton=0)
 om$par[which.max(abs(om$gr()))] # check the OM worked ok
