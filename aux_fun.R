@@ -63,7 +63,8 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100,
     geom_ribbon(aes(ymin=ymin,ymax=ymax), alpha=.3, fill=2)+
     geom_line(aes(y=exp), col=2, lwd=1)+
     geom_pointrange(fatten=2) +
-    labs(y='Weight (kg)', x=NULL) 
+    theme_bw() +
+    labs(y='Mean weight (kg)', x=NULL) 
   if(plot) print(g)
   return(invisible(waa))
 }
@@ -206,7 +207,7 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$par$M_re = matrix(rep(log(SS_report$Z_at_age$`0`[SS_report$Z_at_age$Yr %in% wham_data$years]) - log(SS_report$Natural_Mortality[1,5]), times = n_ages), ncol = n_ages)
   tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
   tmpMmatrix[years %in% 2014:2016] = 1
-  input$par$M_repars[1] = log(0.5)
+  #input$par$M_repars[1] = log(0.1)
   input$map$M_re = factor(as.vector(tmpMmatrix))
   # Deviations in selectivity parameters (initial values): 
   SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% years,]
@@ -224,15 +225,14 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
   par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
   par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-  par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
-  input$par$selpars_re[(n_years*4+1):(n_years*8)] = c(par1, par2, par3, par4)
+  input$par$selpars_re[(n_years*4+1):(n_years*7)] = c(par1, par2, par3)
   # FISHERY 3:
   fleet = 3
   tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
   par1 = -log((input$data$selpars_upper[fleet,25]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,25]))-input$par$logit_selpars[fleet,25]
   par2 = -log((input$data$selpars_upper[fleet,26]-tmpSelex$Par2)/(tmpSelex$Par2-input$data$selpars_lower[fleet,26]))-input$par$logit_selpars[fleet,26]
   par3 = -log((input$data$selpars_upper[fleet,27]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,27]))-input$par$logit_selpars[fleet,27]
-  input$par$selpars_re[(n_years*8+1):(n_years*11)] = c(par1, par2, par3)
+  input$par$selpars_re[(n_years*7+1):(n_years*10)] = c(par1, par2, par3)
   # INDEX 1:
   fleet = 4
   tmpSelex = SSSelex[SSSelex$Fleet == fleet, ]
@@ -242,7 +242,7 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   par4 = -log((input$data$selpars_upper[fleet,28]-tmpSelex$Par4)/(tmpSelex$Par4-input$data$selpars_lower[fleet,28]))-input$par$logit_selpars[fleet,28]
   par5 = -log((input$data$selpars_upper[fleet,29]-tmpSelex$Par5)/(tmpSelex$Par5-input$data$selpars_lower[fleet,29]))-input$par$logit_selpars[fleet,29]
   par6 = -log((input$data$selpars_upper[fleet,30]-tmpSelex$Par6)/(tmpSelex$Par6-input$data$selpars_lower[fleet,30]))-input$par$logit_selpars[fleet,30]
-  input$par$selpars_re[(n_years*11+1):(n_years*17)] = c(par1, par2, par3, par4, par5, par6)
+  input$par$selpars_re[(n_years*10+1):(n_years*16)] = c(par1, par2, par3, par4, par5, par6)
   # Selectivity blocks/deviates (mapping):
   # Fishery 1:
   map_f1_par1 = c(1:13, rep(14, times = 15), rep(15, times = 2), rep(16, times = 10), rep(NA, times = 6))
@@ -253,7 +253,6 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   map_f2_par1 = c(NA, 55:66, rep(67, times = 15), rep(68, times = 2), rep(69, times = 10), rep(70, times = 6))
   map_f2_par2 = c(rep(NA, times = 13), rep(71, times = 15), rep(72, times = 2), rep(73, times = 10), rep(74, times = 6))
   map_f2_par3 = c(NA, 75:86, rep(87, times = 15), rep(88, times = 2), rep(89, times = 10), rep(90, times = 6))
-  map_f2_par4 = c(rep(NA, times = 13), rep(NA, times = 15), rep(NA, times = 2), rep(NA, times = 10), rep(NA, times = 6))
   # Fishery 3:
   map_f3_par1 = c(rep(NA, times = 40), rep(91, times = 6))
   map_f3_par2 = c(rep(NA, times = 40), rep(92, times = 6))
@@ -267,15 +266,16 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   map_i1_par6 = c(rep(NA, times = 19), rep(NA, times = 10), rep(NA, times = 17))
   # Now merge all vectors:
   input$map$selpars_re = factor(c(map_f1_par1,map_f1_par2,map_f1_par3,map_f1_par4,
-                           map_f2_par1,map_f2_par2,map_f2_par3,map_f2_par4,
+                           map_f2_par1,map_f2_par2,map_f2_par3,
                            map_f3_par1,map_f3_par2,map_f3_par3,
                            map_i1_par1,map_i1_par2,map_i1_par3,map_i1_par4,map_i1_par5,map_i1_par6))
   #input$map$selpars_re = factor(rep(NA, times = length(input$map$selpars_re)))
   # Fix process error for selectivity:
+  input$par$sel_repars[,1] = log(0.5)
   input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
   # Fix selectivity parameters as in SS
-  #input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
-  input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
+  input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
+  #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
   # Fix process error for Ecov:
   input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
 

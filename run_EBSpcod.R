@@ -17,6 +17,9 @@ source('aux_fun.R')
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/EBS_pcod/BSPcod22_OCT.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/EBS_pcod') # from OM
 
+# Model names in plot:
+model_names = c('SS', 'AR1_WHAM', 'ecov_WHAM')
+
 # Some model parameters:
 mycols = c("#D16103", "#52854C", "#4E84C4")
 n_ages = 20
@@ -210,7 +213,7 @@ plot_wham_output(mod = fit_a, dir.main = 'EBS_pcod/fit_a', out.type = 'pdf')
 
 # Get SSB estimates:
 this_model = fit_a
-model_name = 'AR(1)_WHAM'
+model_name = 'AR1_WHAM'
 tmp = data.frame(name = names(this_model$sdrep$value),
                  est = this_model$sdrep$value, sd = this_model$sdrep$sd)
 SSBdata1 = cbind(model = model_name, year=1977:2022,

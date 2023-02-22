@@ -19,7 +19,7 @@ load('aux_data/cv_survey.RData') # CV for observed WAA (survey)
 load('aux_data/asdrep.RData') # ADMB pollock model output
 # see here: https://github.com/afsc-assessments/GOApollock/blob/dev/pkwham/pkwham_test.R
 
-model_names = c('ADMB', 'EWAA_WHAM', 'iid_WHAM')
+model_names = c('ADMB', 'EWAA_WHAM', 'iid_WHAM', '2DAR1_WHAM')
 
 # Get SSB estimates from ADMB model
 SSBdata0 = cbind(model = model_names[1],
@@ -110,6 +110,9 @@ input_a = prepare_wham_input(model_name="pollock_a",
 input_a = post_input_pollock(input_a, input)
 # no random effects:
 input_a$random <- NULL
+tmp = matrix(input_a$map$logit_selpars, nrow = 7)
+tmp[2,c(3:4,8)] = NA
+input_a$map$logit_selpars = factor(tmp)
 
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -186,99 +189,150 @@ tmp = data.frame(name = names(this_model$sdrep$value),
 SSBdata2 = cbind(model = model_name, year=1970:2021,
                  filter(tmp, name=='log_SSB') %>% dplyr::select(-name))
 
+# -------------------------------------------------------------------------
+# 2DAR1 WAA
+
+# use same input data created in iid WAA
+input_c = prepare_wham_input(model_name = "pollock_c",
+                             selectivity = list(model = c('double-logistic', 'age-specific', 'double-logistic', 
+                                                          'double-logistic', 'age-specific', 'age-specific',
+                                                          'double-logistic'),
+                                                re = c('iid', 'none', 'none', 'none', 'none', 'none', 'none'),
+                                                initial_pars=list(c(4, 1, 20, 0.36), rep(1, 10), 
+                                                                  c(4, 1, 20, 0.36),
+                                                                  c(4, 1, 20, 0.36), rep(1, 10), rep(1, 10),
+                                                                  c(4, 1, 20, 0.36)),
+                                                fix_pars = list(NULL, 1:2, 3:4, 3:4, 1:10, 1:10, 1:4),
+                                                n_selblocks = 7),
+                             M = list(model = 'age-specific', re = 'none',
+                                      initial_means = exp(input$par$M_a)),
+                             NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
+                                           recruit_model = 2,
+                                           N1_pars = exp(input$par$log_N1_pars),
+                                           recruit_pars = exp(input$par$mean_rec_pars)),
+                             WAA = list(WAA_vals = WAA_jan1,
+                                        re = c('2dar1'),
+                                        est_pars = 1:input$data$n_ages),
+                             catchability = list(re = c('ar1', 'none', 'ar1', 'none', 'none', 'none'), 
+                                                 initial_q = rep(1, 6), q_lower = rep(0, 6),
+                                                 q_upper = rep(1000, 6), prior_sd = rep(NA, 6)),
+                             basic_info = wham_data)
+
+# update some inputs:
+input_c = post_input_pollock(input_c, input)
+# random WAA only
+input_c$random <- c('WAA_re')
+
+#Run model:
+fit_c = fit_wham(input_c, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
+check_convergence(fit_c)
+save(fit_c, file = 'GOA_pollock/fit_c.RData')
+
+# Make plots
+dir.create(path = 'GOA_pollock/fit_c')
+plot_wham_output(mod = fit_c, dir.main = 'GOA_pollock/fit_c', out.type = 'pdf')
+
+# Get SSB estimates:
+this_model = fit_c
+model_name = model_names[4]
+tmp = data.frame(name = names(this_model$sdrep$value),
+                 est = this_model$sdrep$value, sd = this_model$sdrep$sd)
+SSBdata3 = cbind(model = model_name, year=1970:2021,
+                 filter(tmp, name=='log_SSB') %>% dplyr::select(-name))
+
 
 # -------------------------------------------------------------------------
 # Compare SSB among models
 
-plot_data = rbind(SSBdata0, SSBdata1, SSBdata2)
+plot_data = rbind(SSBdata0, SSBdata1, SSBdata2, SSBdata3)
 plot_data$model = factor(plot_data$model, levels = model_names)
 
-# Plot SSB + uncertainty:
-p1 = ggplot(plot_data, aes(year, exp(est)*1e-06, ymin=exp(est-1.96*sd)*1e-06, ymax=exp(est+1.96*sd)*1e-06,
-                      fill=model, color=model)) +
-  ylim(0,NA) + labs(y='SSB (million tons)', x= NULL) +
-  geom_ribbon(alpha=.25, color = NA) + geom_line(linewidth=1) +
+# Plot SSB (mean):
+p1 = ggplot(plot_data, aes(x = year, y = exp(est)*1e-06, color=model)) +
+  ylim(0,0.8) + labs(y='SSB (million tons)', x= NULL) +
+  geom_line(linewidth=1) +
   labs( color=NULL, fill=NULL) +
-  scale_fill_manual(values = mycols) +
-  scale_color_manual(values = mycols) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
   theme_bw() +
   annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
+  guides(color=guide_legend(title=NULL,nrow = 2),
          shape = guide_legend(override.aes = list(size = 0.1))) +
-  theme(legend.position=c(0.5,0.95), 
+  theme(legend.position=c(0.5,0.9), 
         legend.text = element_text(size = 7.5),
         legend.background = element_blank())
-#ggsave(filename = 'GOA_pollock/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
+
+p2 = ggplot(plot_data, aes(x = year, y = sd/est, color=model)) +
+  ylim(0,0.035) + labs(y='CV SSB', x= NULL) +
+  geom_line(linewidth=1) +
+  labs( color=NULL, fill=NULL) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
+  theme_bw() +
+  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
+  guides(color=guide_legend(title=NULL,nrow = 2),
+         shape = guide_legend(override.aes = list(size = 0.1))) +
+  theme(legend.position=c(0.5,0.9), 
+        legend.text = element_text(size = 7.5),
+        legend.background = element_blank())
 
 # Plot LAA and WAA over time ----------------------------------------------
 
+# iid WHAM:
 WAA_data = fit_b$rep$WAA_re
 colnames(WAA_data) = input$ages.lab
 rownames(WAA_data) = input$years
 WAA_plot = reshape2::melt(data = WAA_data, varnames = c('year', 'age'))
 
-p2 = ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
+p3 = ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
   geom_line(linewidth = 1, alpha = 0.7) +
-  labs(y='WAA random effects', x= NULL) +
+  labs(y='WAA random effects (iid)', x= NULL) +
   labs( color=NULL) +
   scale_color_brewer(palette = 'Spectral') +
+  ylim(-0.75, 1) +
   theme_bw() +
-  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
+  annotate("text", label = 'C', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 2), 
          color=guide_legend(title=NULL,nrow = 2),
          shape = guide_legend(override.aes = list(size = 0.1))) +
   theme(legend.position=c(0.5,0.9), 
         legend.text = element_text(size = 7.5),
         legend.background = element_blank()) 
+
+
+# 2dAR1 WHAM:
+WAA_data = fit_c$rep$WAA_re
+colnames(WAA_data) = input$ages.lab
+rownames(WAA_data) = input$years
+WAA_plot = reshape2::melt(data = WAA_data, varnames = c('year', 'age'))
+
+p4 = ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
+  geom_line(linewidth = 1, alpha = 0.7) +
+  labs(y='WAA random effects (2DAR1)', x= NULL) +
+  labs( color=NULL) +
+  scale_color_brewer(palette = 'Spectral') +
+  ylim(-0.75, 1) +
+  theme_bw() +
+  annotate("text", label = 'D', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
+  guides(fill=guide_legend(title=NULL,nrow = 2), 
+         color=guide_legend(title=NULL,nrow = 2),
+         shape = guide_legend(override.aes = list(size = 0.1))) +
+  theme(legend.position=c(0.5,0.9), 
+        legend.text = element_text(size = 7.5),
+        legend.background = element_blank())
 #ggsave(filename = 'GOA_pollock/WAA_re.png', width = 190, height = 120, units = 'mm', dpi = 500)
 
 # Merge plots:
-png(filename = 'GOA_pollock/main_GOApollock.png', width = 190, height = 70, units = 'mm', res = 500)
-gridExtra::grid.arrange(p1, p2, ncol = 2)
+png(filename = 'GOA_pollock/main_GOApollock.png', width = 190, height = 160, units = 'mm', res = 500)
+gridExtra::grid.arrange(p1, p2, p3, p4, nrow = 2)
 dev.off()
 
 
 # -------------------------------------------------------------------------
-# Plot observed length survey data:
+# Plot fits:
 
-# Read data:
-pollockdata = readRDS('aux_data/pollock_lwa_data.RDS')
-pollockdata$age = ifelse(test = pollockdata$age > 10, yes = 10, no = pollockdata$age)
-pollockdata$age = as.character(pollockdata$age)
-pollockdata$age = ifelse(test = pollockdata$age == 10, yes = '10+', no = pollockdata$age)
-pollockdata$age = factor(pollockdata$age, levels = c(1:9, '10+'))
+plot_waa_fit(fit = fit_b, minyr=1990, maxyr=2009, by.cohort = FALSE)
+ggsave(filename = 'GOA_pollock/summary_WAA_fit_b.png', width = 190, height = 140, units = 'mm', dpi = 500)
 
-# Model fits:
-this_waa = fit_a$rep$pred_waa[2,,]
-colnames(this_waa) = input$ages.lab
-rownames(this_waa) = input$years
-wgtdata1 = reshape2::melt(this_waa, varnames = c('year', 'age'))
-wgtdata1$model = model_names[2]
-this_waa = fit_b$rep$pred_waa[2,,]
-colnames(this_waa) = input$ages.lab
-rownames(this_waa) = input$years
-wgtdata2 = reshape2::melt(this_waa, varnames = c('year', 'age'))
-wgtdata2$model = model_names[3]
-
-# Plot data:
-waa_plot = rbind(wgtdata1, wgtdata2)
-waa_plot$model = factor(waa_plot$model, levels = model_names[2:3])
-
-# Make plot:
-pollockdata2 = pollockdata[!is.na(pollockdata$age),]
-ggplot(data = pollockdata2, aes(x = year, y = weight)) +
-  geom_point(size = 0.65, alpha = 0.2, color  = 'gray50') +
-  geom_line(data = waa_plot, aes(x = year, y = value, color = factor(model)), linewidth = 1) +
-  xlim(c(1986, 2021)) +
-  labs(color = NULL,x= NULL, y = 'Weight (kg)') +
-  theme_bw() +
-  guides(fill=guide_legend(title=NULL,nrow = 2), 
-         color=guide_legend(title=NULL,nrow = 2),
-         shape = guide_legend(override.aes = list(size = 0.8))) +
-  theme(legend.position=c(0.8,0.15), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())  +  
-  scale_color_manual(values = mycols[2:3]) +
-  facet_wrap(. ~factor(age), nrow = 3, scales = 'free_y')
-ggsave(filename = 'GOA_pollock/summary_WAA_fits.png', width = 190, height = 140, units = 'mm', dpi = 500)
+plot_waa_fit(fit = fit_c, minyr=1990, maxyr=2009, by.cohort = FALSE)
+ggsave(filename = 'GOA_pollock/summary_WAA_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)

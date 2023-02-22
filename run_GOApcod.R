@@ -20,6 +20,9 @@ source('aux_fun.R')
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/GOA_pcod/GOAPcod2022Oct25_wADFG.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/GOA_pcod') # from OM
 
+# Model names in plot:
+model_names = c('SS', 'WHAM')
+
 # Some model parameters:
 mycols = c("#D16103", "#52854C")
 n_ages = 10
@@ -38,10 +41,14 @@ LAA_SS = as.matrix(SS_report$growthseries[1,6:15])
 int_selPos = grep(pattern =  "Size_DblN", x = SS_report$parameters$Label)[1]
 SelecParams = SS_report$parameters[int_selPos:nrow(SS_report$parameters), ]
 selpars1 = SelecParams$Value[1:6]
+selpars1[5] = -19 # modify initial value
 selpars2 = SelecParams$Value[7:12]
+selpars2[5] = -19 # modify initial value
 selpars3 = SelecParams$Value[13:18]
+selpars3[5] = -19 # modify initial value
 selpars4 = SelecParams$Value[19:24]
 selpars5 = SelecParams$Value[25:30]
+selpars5[5] = -19 # modify initial value
 
 # Abundance-at-age info from SS:
 NAA_SS = SS_report$natage[SS_report$natage$`Beg/Mid` == 'B' & SS_report$natage$Yr >= min_year & SS_report$natage$Yr <= max_year, 14:(14+n_ages-1)]
@@ -70,6 +77,9 @@ wham_data$index_cv[is.na(wham_data$index_cv)] = 0
 wham_data$units_indices = matrix(0L, nrow = n_years, ncol = wham_data$n_indices)
 wham_data$use_indices = matrix(1L, nrow = n_years, ncol = wham_data$n_indices)
 wham_data$use_indices[is.na(tmp_data2$obs)] = -1
+# Turn off age comps for fishery and surveys (following WHAM philosophy)
+wham_data$use_catch_paa = matrix(0L, nrow = n_years, ncol = wham_data$n_fleets)
+wham_data$use_index_paa = matrix(0L, nrow = n_years, ncol = wham_data$n_indices)
 # Len comps catch:
 wham_lencomps = array(0, dim = c(wham_data$n_fleets, n_years, length(length_vector)))
 wham_lenNeff = matrix(0, ncol = wham_data$n_fleets, nrow = n_years)
@@ -195,11 +205,9 @@ ecov <- list(
 input_a = prepare_wham_input(model_name="goa_cod_1",
                                selectivity=list(model = rep('len-double-normal', times = 5),
                                                 re = c(rep('iid', times = 4), 'none'),
-                                                #re = c(rep('none', times = 5)),
                                                 initial_pars=list(selpars1, selpars2, selpars3,
                                                                   selpars4, selpars5),
-                                                fix_pars = list(5:6,5:6,4:6,NULL,1:6),
-                                                #fix_pars = list(1:6,1:6,1:6,1:6,1:6),
+                                                fix_pars = list(5:6,4:6,4:6,NULL,1:6),
                                                 n_selblocks = 5),
                                M = list(model = 'constant', re = 'none',
                                         initial_means = SS_report$Natural_Mortality[1,5],
@@ -219,7 +227,7 @@ input_a = prepare_wham_input(model_name="goa_cod_1",
                                catchability = list(re = c('none', 'none'),
                                                    initial_q = Q_pars,
                                                    q_lower = c(0,0),
-                                                   q_upper = c(1000,1000), prior_sd = c(NA,NA)),
+                                                   q_upper = c(10,10), prior_sd = c(NA,NA)),
                                ecov = ecov,
                                basic_info = wham_data)
 
@@ -261,13 +269,15 @@ data2$est = exp(data2$est)
 
 # Make plot:
 plot_data =rbind(data1, data2)
+plot_data$model = factor(plot_data$model, levels = model_names)
+
 p1 = ggplot(plot_data, aes(year, est*1e-06, ymin=ssb_min*1e-06, ymax=ssb_max*1e-06,
                       fill=model, color=model)) +
   ylim(0,NA) + labs(y='SSB (million tons)', x = NULL) +
   geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
   labs( color=NULL, fill=NULL) +
-  scale_fill_manual(values = mycols) +
-  scale_color_manual(values = mycols) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
   theme_bw() +
   annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
@@ -302,8 +312,8 @@ p2 = ggplot(plot_data, aes(ages, LAA, ymin=len_min, ymax=len_max,
   ylim(0,NA) + labs(y='Mean length (cm)', x = NULL) +
   geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
   labs( color=NULL, fill=NULL) +
-  scale_fill_manual(values = mycols) +
-  scale_color_manual(values = mycols) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
   theme_bw() +
   annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   scale_x_continuous(breaks = 1:10, labels = 1:10) +
