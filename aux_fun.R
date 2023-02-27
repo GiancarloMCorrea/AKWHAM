@@ -277,7 +277,7 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
   #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
   # Fix process error for Ecov:
-  input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
+  #input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
 
   return(input)
 }
@@ -314,22 +314,31 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   par1 = -log((input$data$selpars_upper[fleet,ncolSelex-5]-tmpSelex$Par1)/(tmpSelex$Par1-input$data$selpars_lower[fleet,ncolSelex-5]))-input$par$logit_selpars[fleet,ncolSelex-5]
   par3b = -log((input$data$selpars_upper[fleet,ncolSelex-3]-tmpSelex$Par3)/(tmpSelex$Par3-input$data$selpars_lower[fleet,ncolSelex-3]))-input$par$logit_selpars[fleet,ncolSelex-3]
   input$par$selpars_re[(n_years*2+1):(n_years*4)] = c(par1, par3b)
+  #input$par$selpars_re[1:(n_years*2)] = c(par1, par3b)
   # Selectivity blocks/deviates (mapping):
   # Fishery 1:
   map_f1_par3 = 1:n_years
   map_f1_par6 = 1:n_years + n_years
+  #map_f1_par3 = rep(NA, times = n_years)
+  #map_f1_par6 = 1:n_years
   # Index 1:
   map_f2_par1 = c(rep(NA, times = 5), 93:133)
   map_f2_par3 = c(rep(NA, times = 5), 134:174)
+  #map_f2_par1 = c(rep(NA, times = 5), 1:41)
+  #map_f2_par3 = c(rep(NA, times = 5), 42:82)
+  #map_f2_par1 = c(rep(NA, times = 5), 47:87)
+  #map_f2_par3 = c(rep(NA, times = 5), 88:128)
   # Now merge all vectors:
-  #input$map$selpars_re = factor(c(map_f1_par3, map_f1_par6, map_f2_par1, map_f2_par3))
-  input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
+  input$map$selpars_re = factor(c(map_f1_par3, map_f1_par6, map_f2_par1, map_f2_par3))
+  #input$map$selpars_re = factor(c(map_f2_par1, map_f2_par3))
+  #input$map$selpars_re = factor(rep(NA, times = length(input$par$selpars_re)))
   # Fix process error for selectivity:
   #input$par$sel_repars[,1] = log(0.5) # increase sigma selex
   input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
   # Fix selectivity parameters as in SS
   #input$map$logit_selpars = factor(c(rep(NA, times = 68), 1:3, NA, 4:5, rep(NA, times = 4), 6, NA)) 
-  input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
+  input$map$logit_selpars = factor(c(rep(NA, times = 69), 1:2, NA, 3:4, rep(NA, times = 4), 5, NA)) # fixing par 1 fishery
+  #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
 
   return(input)
 }

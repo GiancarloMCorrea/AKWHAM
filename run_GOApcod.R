@@ -189,7 +189,7 @@ n_env_years = length(data_file$envdat$Yr)
 ecov <- list(
   label = c("env1"),
   mean = matrix(c(env1), ncol = 1),
-  logsigma = matrix(log(0.01), ncol = 1, nrow = n_env_years), # sigma = 0.2
+  logsigma = matrix(log(0.2), ncol = 1, nrow = n_env_years), # sigma = 0.2
   year = data_file$envdat$Yr,
   use_obs = matrix(1L, ncol=1, nrow=n_env_years),
   lag = list(rep(0, times = 8)),
@@ -234,7 +234,7 @@ input_a = prepare_wham_input(model_name="goa_cod_1",
 # update some inputs as SS model:
 input_a = post_input_GOApcod(input_a, SS_report, NAA_SS)
 # no random effects:
-input_a$random <- NULL
+input_a$random <- c("Ecov_re")
 
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -307,6 +307,8 @@ data2$len_max = data2$LAA + 1.96*data2$SD
 
 # Make plot:
 plot_data =rbind(data1, data2)
+plot_data$model = factor(plot_data$model, levels = model_names)
+
 p2 = ggplot(plot_data, aes(ages, LAA, ymin=len_min, ymax=len_max,
                       fill=model, color=model)) +
   ylim(0,NA) + labs(y='Mean length (cm)', x = NULL) +

@@ -21,7 +21,6 @@ SS_report = r4ss::SS_output(dir = 'SS_models/EBS_pcod') # from OM
 model_names = c('SS', 'AR1_WHAM', 'ecov_WHAM')
 
 # Some model parameters:
-mycols = c("#D16103", "#52854C", "#4E84C4")
 n_ages = 20
 length_vector = SS_report$lbins
 min_year = SS_report$startyr
@@ -68,6 +67,8 @@ tmp_data = data.frame(year = wham_data$years, use = 1)
 tmp_data2 = merge(tmp_data, data_file$CPUE, by = 'year', all.x = TRUE)
 tmp_data2$use[is.na(tmp_data2$obs)] = -1
 wham_data$use_indices = matrix(tmp_data2$use, nrow = n_years, ncol = 1)
+# Turn off age comps for fishery and surveys (following WHAM philosophy)
+wham_data$use_catch_paa = matrix(0L, nrow = n_years, ncol = wham_data$n_fleets)
 # Len comps catch:
 wham_lencomps = array(0, dim = c(wham_data$n_fleets, n_years, length(length_vector)))
 wham_lenNeff = matrix(0, ncol = wham_data$n_fleets, nrow = n_years)
@@ -166,10 +167,8 @@ ecov <- list(
 # Prepare input object:
 input_a = prepare_wham_input(model_name="ebs_cod_1",
                                selectivity=list(model = c('len-double-normal', 'len-double-normal'),
-                                                #re = c('none', 'none'),
                                                 re = c('iid', 'iid'),
                                                 initial_pars=list(selpars1, selpars2),
-                                                #fix_pars = list(1:6, 1:6),
                                                 fix_pars = list(c(1,2,4,5), c(2,4:6)),
                                                 n_selblocks = 2),
                                M = list(model = 'constant', re = 'none',
@@ -177,11 +176,10 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
                                         est_ages = 1),
                                NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                              recruit_model = 2,
-                                             #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
                                              N1_pars = c(NAA_SS[1,1], 0.12),
                                              recruit_pars = mean(NAA_SS[,1])),
                                growth = list(model = 'Richards',
-                                             re = c('none', 'none', 'ar1_y', 'none'),
+                                             re = c('none', 'none', 'ar1_y', 'none'), 
                                              init_vals = GWpars[1:4],
                                              est_pars = c(1:4),
                                              SD_vals = GWpars[5:6],
@@ -190,7 +188,7 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
                                      init_vals = LWpars),
                                catchability = list(re = c('none'), 
                                                    initial_q = Q_pars, q_lower = 0,
-                                                   q_upper = 1000, prior_sd = NA),
+                                                   q_upper = 10, prior_sd = NA),
                                age_comp = 'dirichlet-pool0',
                                ecov = ecov,
                                basic_info = wham_data)
@@ -199,8 +197,6 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
 input_a = post_input_EBSpcod(input_a, SS_report, NAA_SS)
 input_a$map$Ecov_beta = factor(rep(NA, times = length(input_a$map$Ecov_beta))) # no effect on L1
 input_a$random = c("growth_re", "Ecov_re")
-# input_a$random = NULL
-# input_a$map$growth_repars = factor(rep(NA, times = length(input_a$map$growth_repars)))
 
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -228,10 +224,8 @@ SSBdata1$est = exp(SSBdata1$est)
 # Prepare input object:
 input_b = prepare_wham_input(model_name="ebs_cod_2",
                              selectivity=list(model = c('len-double-normal', 'len-double-normal'),
-                                              #re = c('none', 'none'),
                                               re = c('iid', 'iid'),
                                               initial_pars=list(selpars1, selpars2),
-                                              #fix_pars = list(1:6, 1:6),
                                               fix_pars = list(c(1,2,4,5), c(2,4:6)),
                                               n_selblocks = 2),
                              M = list(model = 'constant', re = 'none',
@@ -252,7 +246,7 @@ input_b = prepare_wham_input(model_name="ebs_cod_2",
                                        init_vals = LWpars),
                              catchability = list(re = c('none'), 
                                                  initial_q = Q_pars, q_lower = 0,
-                                                 q_upper = 1000, prior_sd = NA),
+                                                 q_upper = 10, prior_sd = NA),
                              age_comp = 'dirichlet-pool0',
                              ecov = ecov,
                              basic_info = wham_data)
@@ -269,7 +263,7 @@ save(fit_b, file = 'EBS_pcod/fit_b.RData')
 
 # Make plots
 dir.create(path = 'EBS_pcod/fit_b')
-plot_wham_output(mod = fit_b, dir.main = 'EBS_pcod/fit_b', out.type = 'png')
+plot_wham_output(mod = fit_b, dir.main = 'EBS_pcod/fit_b', out.type = 'pdf')
 
 # Get SSB estimates:
 this_model = fit_b
@@ -298,51 +292,50 @@ plot_data = rbind(SSBdata0, SSBdata1, SSBdata2)
 plot_data$est = plot_data$est*1E-06
 plot_data$ssb_min = plot_data$ssb_min*1E-06
 plot_data$ssb_max = plot_data$ssb_max*1E-06
-plot_data$model = factor(plot_data$model, levels = c('SS','AR(1)_WHAM', 'ecov_WHAM'))
 
-# Make plot:
+plot_data$model = factor(plot_data$model, levels = model_names)
+
+# Make plot mean SSB:
 p1 = ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
-                      fill=model, color=model)) +
-  ylim(0,NA) + labs(y='SSB (million mt)', x = NULL) +
+                           fill=model, color=model)) +
+  ylim(0,NA) + labs(y='SSB (million tons)', x = NULL) +
   geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
   labs( color=NULL, fill=NULL) +
-  scale_fill_manual(values = mycols) +
-  scale_color_manual(values = mycols) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
   theme_bw() +
   annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
          color=guide_legend(title=NULL,nrow = 1),
          shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.1), 
+  theme(legend.position=c(0.5,0.075), 
         legend.text = element_text(size = 10),
         legend.background = element_blank())
-#ggsave(filename = 'EBS_pcod/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
 
 # -------------------------------------------------------------------------
 # Plot L1 temporal variability:
-LAA_a = data.frame(year = min_year:max_year, L1 = fit_a$rep$LAA[,1], model = 'AR(1)_WHAM')
+LAA_a = data.frame(year = min_year:max_year, L1 = fit_a$rep$LAA[,1], model = 'AR1_WHAM')
 LAA_b = data.frame(year = min_year:max_year, L1 = fit_b$rep$LAA[,1], model = 'ecov_WHAM')
 LAA_SS = data.frame(year = min_year:(max_year-1), L1 = SS_report$growthseries[,6], model = 'SS')
 
 # Merge datasets:
 plot_data = rbind(LAA_a, LAA_b, LAA_SS)
-plot_data$model = factor(plot_data$model, levels = c('SS','AR(1)_WHAM', 'ecov_WHAM'))
+plot_data$model = factor(plot_data$model, levels = model_names)
 
 # Make plot:
 p2 = ggplot(plot_data, aes(year, L1, color=model)) +
   geom_line(lwd=1) +
   labs(y='Mean length-at-age 1 (cm)', x = NULL) +
   labs( color=NULL, fill=NULL) +
-  scale_fill_manual(values = mycols) +
-  scale_color_manual(values = mycols) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_brewer(palette = 'Set1') +
   theme_bw() +
   coord_cartesian(ylim=c(6, 18)) +
   annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
   guides(fill=guide_legend(title=NULL,nrow = 1), 
          color=guide_legend(title=NULL,nrow = 1),
          shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.1), 
+  theme(legend.position=c(0.5,0.075), 
         legend.text = element_text(size = 10),
         legend.background = element_blank())
 # ggsave(filename = 'EBS_pcod/compare_L1.png', width = 190, height = 120, units = 'mm', dpi = 500)

@@ -26,7 +26,6 @@ SSBdata0 = cbind(model = model_names[1],
             filter(asdrep, name=='log_ssb') %>% select(year, est, sd=se))
 
 # Some model parameters:
-mycols = c("#D16103", "#52854C", "#4E84C4")
 LAA_jan1 = c(8.8, 21.1, 30.4, 37.4, 42.7, 46.8, 49.8, 52.1, 53.9, 55.2) # obtained from survey data
 LW_pars = c(2.847e-06, 3.261) # obtained from survey data
 WAA_jan1 = round(LW_pars[1]*LAA_jan1^LW_pars[2], digits = 3)
@@ -110,6 +109,7 @@ input_a = prepare_wham_input(model_name="pollock_a",
 input_a = post_input_pollock(input_a, input)
 # no random effects:
 input_a$random <- NULL
+# Fix survey selex for age 3,4, and 8 to make the model converge:
 tmp = matrix(input_a$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
 input_a$map$logit_selpars = factor(tmp)
@@ -171,6 +171,10 @@ input_b = prepare_wham_input(model_name = "pollock_b",
 input_b = post_input_pollock(input_b, input)
 # random WAA only
 input_b$random <- c('WAA_re')
+# Fix survey selex for age 3,4, and 8 to make the model converge:
+tmp = matrix(input_b$map$logit_selpars, nrow = 7)
+tmp[2,c(3:4,8)] = NA
+input_b$map$logit_selpars = factor(tmp)
 
 #Run model:
 fit_b = fit_wham(input_b, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -222,6 +226,10 @@ input_c = prepare_wham_input(model_name = "pollock_c",
 input_c = post_input_pollock(input_c, input)
 # random WAA only
 input_c$random <- c('WAA_re')
+# Fix survey selex for age 3,4, and 8 to make the model converge:
+tmp = matrix(input_c$map$logit_selpars, nrow = 7)
+tmp[2,c(3:4,8)] = NA
+input_c$map$logit_selpars = factor(tmp)
 
 #Run model:
 fit_c = fit_wham(input_c, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
@@ -329,10 +337,10 @@ dev.off()
 
 
 # -------------------------------------------------------------------------
-# Plot fits:
+# Plot WAA fits:
 
-plot_waa_fit(fit = fit_b, minyr=1990, maxyr=2009, by.cohort = FALSE)
+plot_waa_fit(fit = fit_b, minyr=1990, maxyr=2009)
 ggsave(filename = 'GOA_pollock/summary_WAA_fit_b.png', width = 190, height = 140, units = 'mm', dpi = 500)
 
-plot_waa_fit(fit = fit_c, minyr=1990, maxyr=2009, by.cohort = FALSE)
+plot_waa_fit(fit = fit_c, minyr=1990, maxyr=2009)
 ggsave(filename = 'GOA_pollock/summary_WAA_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)
