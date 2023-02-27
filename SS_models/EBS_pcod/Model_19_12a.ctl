@@ -236,7 +236,7 @@
 #
 #_          LO            HI          INIT         PRIOR         PR_SD       PR_type      PHASE    env-var    use_dev   dev_mnyr   dev_mxyr     dev_PH      Block    Blk_Fxn  #  parm_name
 # 1   Fishery LenSelex
-            10            80       74.9528          -999          -999             0          3          0          0          0          0          0          0          0  #  Size_DblN_peak_Fishery(1)
+            10            80       74.9646          -999          -999             0         -3          0          0          0          0          0          0          0  #  Size_DblN_peak_Fishery(1)
            -10            10       -8.4506          -999          -999             0          3          0          0          0          0          0          0          0  #  Size_DblN_top_logit_Fishery(1)
            -10            10       6.05712          -999          -999             0          3          0          2       1977       2022          3          0          0  #  Size_DblN_ascend_se_Fishery(1)
            -10            10      -9.79532          -999          -999             0         -3          0          0          0          0          0          0          0  #  Size_DblN_descend_se_Fishery(1)
