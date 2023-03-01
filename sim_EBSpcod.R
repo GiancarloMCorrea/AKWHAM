@@ -34,7 +34,7 @@ OMinput = fit_a$input
 ## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
 OMinput$data$simulate_data <- c(1,1,1) 
 OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
-# Fix selectivity parameters to reach convergence (especially for model a)
+# Fix selectivity parameters? Cole, decide this:
 fit_a$input$map$logit_selpars <- factor(NA*fit_a$input$par$logit_selpars)
 fit_a$input$map$selpars_re <- factor(NA*fit_a$input$par$selpars_re)
 # Run OM again: Make sure you have ~2 hours
@@ -105,7 +105,7 @@ OMinput = fit_b$input
 ## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
 OMinput$data$simulate_data <- c(1,1,1) 
 OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
-# Fix selectivity parameters to reach convergence (especially for model a)
+# Fix selectivity parameters? Cole, decide this
 fit_b$input$map$logit_selpars <- factor(NA*fit_b$input$par$logit_selpars)
 fit_b$input$map$selpars_re <- factor(NA*fit_b$input$par$selpars_re)
 # Run OM again: Make sure you have ~2 hours
