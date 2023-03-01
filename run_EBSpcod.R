@@ -341,11 +341,12 @@ p2 = ggplot(plot_data, aes(year, L1, color=model)) +
 # ggsave(filename = 'EBS_pcod/compare_L1.png', width = 190, height = 120, units = 'mm', dpi = 500)
 
 # Plot Ecov:
-p3 = plot_ecov_fit(fit_b, label = 'C')
+p3 = plot_ecov_fit(fit_a, label = 'C', myCol = "#377EB8")
+p4 = plot_ecov_fit(fit_b, label = 'D', myCol = "#4DAF4A")
 
 # Merge plots:
 png(filename = 'EBS_pcod/main_EBSpcod.png', width = 190, height = 160, units = 'mm', res = 500)
-gridExtra::grid.arrange(p1, p2, p3, ncol = 2)
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 dev.off()
 
 

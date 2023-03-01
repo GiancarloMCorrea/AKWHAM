@@ -109,7 +109,7 @@ input_a = prepare_wham_input(model_name="pollock_a",
 input_a = post_input_pollock(input_a, input)
 # no random effects:
 input_a$random <- NULL
-# Fix survey selex for age 3,4, and 8 to make the model converge:
+# Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_a$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
 input_a$map$logit_selpars = factor(tmp)
@@ -171,7 +171,7 @@ input_b = prepare_wham_input(model_name = "pollock_b",
 input_b = post_input_pollock(input_b, input)
 # random WAA only
 input_b$random <- c('WAA_re')
-# Fix survey selex for age 3,4, and 8 to make the model converge:
+# Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_b$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
 input_b$map$logit_selpars = factor(tmp)
@@ -226,7 +226,7 @@ input_c = prepare_wham_input(model_name = "pollock_c",
 input_c = post_input_pollock(input_c, input)
 # random WAA only
 input_c$random <- c('WAA_re')
-# Fix survey selex for age 3,4, and 8 to make the model converge:
+# Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_c$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
 input_c$map$logit_selpars = factor(tmp)
@@ -344,3 +344,10 @@ ggsave(filename = 'GOA_pollock/summary_WAA_fit_b.png', width = 190, height = 140
 
 plot_waa_fit(fit = fit_c, minyr=1990, maxyr=2009)
 ggsave(filename = 'GOA_pollock/summary_WAA_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)
+
+
+plot_waa_fit(fit = fit_b, minyr=1977, maxyr=2021, by.cohort = FALSE)
+ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_b.png', width = 190, height = 140, units = 'mm', dpi = 500)
+
+plot_waa_fit(fit = fit_c, minyr=1977, maxyr=2021, by.cohort = FALSE)
+ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)

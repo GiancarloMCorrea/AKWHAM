@@ -343,7 +343,7 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   return(input)
 }
 
-plot_ecov_fit <- function(mod, label = ""){
+plot_ecov_fit <- function(mod, label = "", myCol = ''){
 
   require(ggplot2);require(dplyr)
 
@@ -378,8 +378,8 @@ plot_ecov_fit <- function(mod, label = ""){
   plot_dat$ymax = plot_dat$exp + 1.96 * plot_dat$exp_se
 
   g0 <- ggplot(plot_dat, aes(as.numeric(years), obs, ymin=lwr, ymax=upr))+
-    geom_ribbon(aes(ymin=ymin,ymax=ymax), alpha=.3, fill=2)+
-    geom_line(aes(y=exp), col=2, lwd=1)+
+    geom_ribbon(aes(ymin=ymin,ymax=ymax), alpha=.3, fill=myCol)+
+    geom_line(aes(y=exp), col=myCol, lwd=1)+
     geom_pointrange(fatten=2) +
     theme_bw()+
     annotate("text", label = label, x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
