@@ -13,8 +13,9 @@ source("aux_fun.R")
 
 # Number of replicates:
 nsim <- 100
-ts_variables = c('log_Fbar', 'log_SSB')
-ts_labels = c('Fishing mortality', 'Spawning biomass')
+ts_variables = c('F', 'SSB', 'recruits', 'pred_catch')
+ts_labels = c('Fishing mortality', 'Spawning biomass', 'Recruits',
+              'Catch')
 #sc_variables = c('log_F1', 'log_N1_pars', 'logit_q', 'mean_rec_pars')
 sc_variables = c('log_N1_pars', 'logit_q', 'mean_rec_pars', 'growth_a', 'M_a')
 sc_labels = c('Initial abundance', 'Catchability', 'Mean recruitment', 'Growth parameters', 'Natural mortality')
@@ -29,35 +30,54 @@ year0 = fit_a$years[1] - 1
 nyears = length(fit_a$years)
 nages = length(fit_a$ages.lab)
 
-# create OM data:
-OMinput = fit_a$input
-## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
-OMinput$data$simulate_data <- c(1,1,1) 
-OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
-# Fix selectivity parameters to reach convergence (especially for model a)
-fit_a$input$map$logit_selpars <- factor(NA*fit_a$input$par$logit_selpars)
-fit_a$input$map$selpars_re <- factor(NA*fit_a$input$par$selpars_re)
-# Run OM again: Make sure you have ~2 hours
-om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton=0)
-om$par[which.max(abs(om$gr()))] # check the OM worked ok
-om$sdrep
-om$input$par <- om$env$parList(par=om$opt$par)
-#save(om, file = 'om.RData')
-# om2 <- fit_wham(om$input, do.osa = FALSE, do.fit = TRUE,
-#                do.retro = FALSE, n.newton=0)
-# om2$par[which.max(abs(om2$gr()))] # check the OM worked ok
-# om2$sdrep
+
+## # create OM data:
+## OMinput = fit_a$input
+## OMinput$par <- fit_a$parList #fit_a$env$parList(fit_a$opt$par)
+## ## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
+## OMinput$data$simulate_data <- c(1,1,1)
+## OMinput$data$simulate_state <- OMinput$data$simulate_state*0
+## # Fix selectivity parameters to reach convergence (especially for model a)
+## OMinput$map$logit_selpars <- factor(NA*OMinput$par$logit_selpars)
+## OMinput$map$selpars_re <- factor(NA*OMinput$par$selpars_re)
+## #OMinput$map$growth_repars <- factor(NA*OMinput$par$growth_repars)
+## OMinput$map$Ecov_process_pars <- factor(NA*OMinput$par$Ecov_process_pars)
+## OMinput$map$Ecov_re <- factor(NA*OMinput$par$Ecov_re)
+## ## OMinput$map$M_a <- factor(NA*OMinput$par$M_a)
+## ## OMinput$map$log_NAA <- factor(NA*OMinput$par$log_NAA)
+## ## OMinput$map$SD_par <- factor(NA*OMinput$par$SD_par)
+## ## OMinput$map$growth_a <- factor(NA*OMinput$par$growth_a)
+## ## OMinput$map$growth_re <- factor(NA*OMinput$par$growth_re)
+## ## OMinput$map$logit_q <- factor(NA*OMinput$par$logit_q)
+## ## OMinput$map$log_F1 <- factor(NA*OMinput$par$log_F1)
+## ## OMinput$map$log_N1_pars <- factor(NA*OMinput$par$log_N1_pars)
+## ## OMinput$map$mean_rec_pars <- factor(NA*OMinput$par$mean_rec_pars)
+## OMinput$random <- 'growth_re'
+## ## Switch to multinomial for simulation
+## OMinput$data$index_Neff
+## OMinput$data$age_comp_model_fleets <- 1
+## OMinput$data$age_comp_model_indices <- 1
+## OMinput$map$index_paa_pars <- factor(NA*OMinput$par$index_paa_pars)
+## # Run OM again: Make sure you have ~2 hours
+## om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE,
+##                n.newton=0, do.sdrep=FALSE)
+## ## refit to get better convergence
+## OMinput$par <- om$parList
+## om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE,
+##                n.newton=1, do.sdrep=FALSE)
+## om$final_gradient %>% abs %>% max
+## saveRDS(om, file = 'om.RDS')
+
+om <- readRDS('om.RDS')
 
 ### Run and save the simulations
-## test <- run_em(1)
-true <- summary(om$sdrep, select='all')[,1]
 sfInit(parallel=TRUE, cpus=5)
-sfExport('run_em','true','om')
-out <- sfLapply(1:nsim, run_em)
+nsim <- 5
+sfExport('run_em2','om')
+out <- sfLapply(1:nsim, run_em2)
 sfStop()
 results <- bind_rows(out) %>% group_by(rep, par) %>%
-  mutate(lwr=est-1.96*se, upr=est+1.96*se,
-         i=1:n(), re=(est-true)/true,
+  mutate(i=1:n(), re=(est-true)/true,
          year=year0+1:n()+ifelse(n()==nyears,0,NA),
          age=1:n()+ifelse(n()==nages,0,NA)) %>%
   ungroup
@@ -65,7 +85,7 @@ saveRDS(results, file.path(save_folder, 'sim_results_a.RDS'))
 
 ### Process and plot them
 results <- readRDS(file.path(save_folder, 'sim_results_a.RDS'))
-results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
+results %>% group_by(rep) %>% slice_head(n=1) %>% pull(maxgrad)
 ## (t)ime (s)eries we care about
 ts <- filter(results, !is.na(year) & par %in% ts_variables)
 ## (sc)alar quantities we care about
@@ -73,92 +93,20 @@ sc <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables,"$", se
 
 # Make plot SC:
 sc$par = factor(sc$par, levels = sc_variables, labels = sc_labels)
-ggplot(sc, aes(factor(i), re)) + 
-        geom_violin(fill = '#bdd7e7') + 
+ggplot(sc, aes(factor(i), re)) +
+        geom_violin(fill = '#bdd7e7') +
         facet_wrap('par', scales='free_x')+
         xlab(NULL) + ylab('Relative error') +
-        geom_hline(yintercept=0, color=2) 
+        geom_hline(yintercept=0, color=2)
         #coord_cartesian(ylim=.2*c(-1,1))
 ggsave(filename = file.path(save_folder, 'sim_sc_plot_a.png'), width = 190, height = 160, units = 'mm', dpi = 500)
 
 # Make plot TS:
 ts$par = factor(ts$par, levels = ts_variables, labels = ts_labels)
-g = ggplot(ts, aes(year,y= re)) + 
-      facet_wrap('par', nrow=2)+ 
+g = ggplot(ts, aes(year,y= re)) +
+      facet_wrap('par', nrow=2)+
       geom_hline(yintercept=0, color=2) +
       xlab(NULL) + ylab('Relative error')
       #coord_cartesian(ylim=.15*c(-1,1))
 add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#2171b5')
 ggsave(filename = file.path(save_folder, 'sim_ts_plot_a.png'), width = 90, height = 130, units = 'mm', dpi = 500)
-
-### ------------------------------------------------------------
-### Model b: Ecov on L1
-## Rerun CM to get OM
-load("EBS_pcod/fit_b.RData")
-# Extract some parameters relevant for the simulation:
-year0 = fit_b$years[1] - 1
-nyears = length(fit_b$years)
-nages = length(fit_b$ages.lab)
-
-# create OM data:
-OMinput = fit_b$input
-## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
-OMinput$data$simulate_data <- c(1,1,1) 
-OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
-# Fix selectivity parameters to reach convergence (especially for model a)
-fit_b$input$map$logit_selpars <- factor(NA*fit_b$input$par$logit_selpars)
-fit_b$input$map$selpars_re <- factor(NA*fit_b$input$par$selpars_re)
-# Run OM again: Make sure you have ~2 hours
-om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton=0)
-om$par[which.max(abs(om$gr()))] # check the OM worked ok
-om$sdrep
-om$input$par <- om$env$parList(par=om$opt$par)
-#save(om, file = 'om.RData')
-# om2 <- fit_wham(om$input, do.osa = FALSE, do.fit = TRUE,
-#                do.retro = FALSE, n.newton=0)
-# om2$par[which.max(abs(om2$gr()))] # check the OM worked ok
-# om2$sdrep
-
-### Run and save the simulations
-## test <- run_em(1)
-true <- summary(om$sdrep, select='all')[,1]
-sfInit(parallel=TRUE, cpus=5)
-sfExport('run_em','true','om')
-out <- sfLapply(1:nsim, run_em)
-sfStop()
-results <- bind_rows(out) %>% group_by(rep, par) %>%
-  mutate(lwr=est-1.96*se, upr=est+1.96*se,
-         i=1:n(), re=(est-true)/true,
-         year=year0+1:n()+ifelse(n()==nyears,0,NA),
-         age=1:n()+ifelse(n()==nages,0,NA)) %>%
-  ungroup
-saveRDS(results, file.path(save_folder, 'sim_results_b.RDS'))
-
-### Process and plot them
-results <- readRDS(file.path(save_folder, 'sim_results_b.RDS'))
-results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
-## (t)ime (s)eries we care about
-ts <- filter(results, !is.na(year) & par %in% ts_variables)
-## (sc)alar quantities we care about
-sc <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables,"$", sep=""), collapse = '|'),par))
-
-# Make plot SC:
-sc$par = factor(sc$par, levels = sc_variables, labels = sc_labels)
-ggplot(sc, aes(factor(i), re)) + 
-        geom_violin(fill = '#bdd7e7') + 
-        facet_wrap('par', scales='free_x')+
-        xlab(NULL) + ylab('Relative error') +
-        geom_hline(yintercept=0, color=2) 
-        #coord_cartesian(ylim=.2*c(-1,1))
-ggsave(filename = file.path(save_folder, 'sim_sc_plot_b.png'), width = 190, height = 160, units = 'mm', dpi = 500)
-
-# Make plot TS:
-ts$par = factor(ts$par, levels = ts_variables, labels = ts_labels)
-g = ggplot(ts, aes(year,y= re)) + 
-      facet_wrap('par', nrow=2)+ 
-      geom_hline(yintercept=0, color=2) +
-      xlab(NULL) + ylab('Relative error')
-      #coord_cartesian(ylim=.15*c(-1,1))
-add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#2171b5')
-ggsave(filename = file.path(save_folder, 'sim_ts_plot_b.png'), width = 90, height = 130, units = 'mm', dpi = 500)
-
