@@ -31,48 +31,56 @@ nyears = length(fit_a$years)
 nages = length(fit_a$ages.lab)
 
 
-## # create OM data:
-## OMinput = fit_a$input
-## OMinput$par <- fit_a$parList #fit_a$env$parList(fit_a$opt$par)
-## ## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
-## OMinput$data$simulate_data <- c(1,1,1)
-## OMinput$data$simulate_state <- OMinput$data$simulate_state*0
-## # Fix selectivity parameters to reach convergence (especially for model a)
-## OMinput$map$logit_selpars <- factor(NA*OMinput$par$logit_selpars)
-## OMinput$map$selpars_re <- factor(NA*OMinput$par$selpars_re)
-## #OMinput$map$growth_repars <- factor(NA*OMinput$par$growth_repars)
-## OMinput$map$Ecov_process_pars <- factor(NA*OMinput$par$Ecov_process_pars)
-## OMinput$map$Ecov_re <- factor(NA*OMinput$par$Ecov_re)
-## ## OMinput$map$M_a <- factor(NA*OMinput$par$M_a)
-## ## OMinput$map$log_NAA <- factor(NA*OMinput$par$log_NAA)
-## ## OMinput$map$SD_par <- factor(NA*OMinput$par$SD_par)
-## ## OMinput$map$growth_a <- factor(NA*OMinput$par$growth_a)
-## ## OMinput$map$growth_re <- factor(NA*OMinput$par$growth_re)
-## ## OMinput$map$logit_q <- factor(NA*OMinput$par$logit_q)
-## ## OMinput$map$log_F1 <- factor(NA*OMinput$par$log_F1)
-## ## OMinput$map$log_N1_pars <- factor(NA*OMinput$par$log_N1_pars)
-## ## OMinput$map$mean_rec_pars <- factor(NA*OMinput$par$mean_rec_pars)
-## OMinput$random <- 'growth_re'
-## ## Switch to multinomial for simulation
-## OMinput$data$index_Neff
-## OMinput$data$age_comp_model_fleets <- 1
-## OMinput$data$age_comp_model_indices <- 1
-## OMinput$map$index_paa_pars <- factor(NA*OMinput$par$index_paa_pars)
-## # Run OM again: Make sure you have ~2 hours
-## om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE,
-##                n.newton=0, do.sdrep=FALSE)
+# create OM data:
+OMinput = fit_a$input
+OMinput$par <- fit_a$parList #fit_a$env$parList(fit_a$opt$par)
+## vector (0/1) if 1 then data type (catch, indices, Ecov obs) will be simulated.
+OMinput$data$simulate_data <- c(1,1,1)
+OMinput$data$simulate_state <- OMinput$data$simulate_state*0
+# Fix selectivity parameters to reach convergence (especially for model a)
+OMinput$map$logit_selpars <- factor(NA*OMinput$par$logit_selpars)
+OMinput$map$selpars_re <- factor(NA*OMinput$par$selpars_re)
+#OMinput$map$growth_repars <- factor(NA*OMinput$par$growth_repars)
+OMinput$map$Ecov_process_pars <- factor(NA*OMinput$par$Ecov_process_pars)
+OMinput$map$Ecov_re <- factor(NA*OMinput$par$Ecov_re)
+OMinput$map$M_a <- factor(NA*OMinput$par$M_a)
+## OMinput$map$log_NAA <- factor(NA*OMinput$par$log_NAA)
+## OMinput$map$SD_par <- factor(NA*OMinput$par$SD_par)
+## OMinput$map$growth_a <- factor(NA*OMinput$par$growth_a)
+## OMinput$map$growth_a <- factor(c(1,NA,3,4))
+## OMinput$map$growth_re <- factor(NA*OMinput$par$growth_re)
+## OMinput$map$growth_repars <- factor(NA*OMinput$par$growth_repars)
+## OMinput$map$logit_q <- factor(NA*OMinput$par$logit_q)
+## OMinput$map$log_F1 <- factor(NA*OMinput$par$log_F1)
+## OMinput$map$log_N1_pars <- factor(NA*OMinput$par$log_N1_pars)
+## OMinput$map$mean_rec_pars <- factor(NA*OMinput$par$mean_rec_pars)
+OMinput$random <- 'growth_re'
+## Switch to multinomial for simulation
+OMinput$data$index_Neff <- 1*OMinput$data$index_Neff
+OMinput$data$index_NeffL <- 1*OMinput$data$index_NeffL
+OMinput$data$age_comp_model_fleets <- 1
+OMinput$data$age_comp_model_indices <- 1
+## multinomial has no pars to estimate
+OMinput$map$index_paa_pars <- factor(NA*OMinput$par$index_paa_pars)
+## turn off ageing error matrices
+OMinput$data$use_index_aging_error <- 0
+OMinput$data$use_catch_aging_error <- 0
+
+## Build OM but don't run it
+om <- fit_wham(OMinput, do.osa = FALSE, do.fit = FALSE, do.retro = FALSE,
+               n.newton=0, do.sdrep=FALSE)
+names(om$par) %>% unique
 ## ## refit to get better convergence
 ## OMinput$par <- om$parList
 ## om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE,
-##                n.newton=1, do.sdrep=FALSE)
+##                n.newton=2, do.sdrep=FALSE)
 ## om$final_gradient %>% abs %>% max
 ## saveRDS(om, file = 'om.RDS')
-
-om <- readRDS('om.RDS')
+## om <- readRDS('om.RDS')
 
 ### Run and save the simulations
-sfInit(parallel=TRUE, cpus=5)
-nsim <- 5
+sfInit(parallel=TRUE, cpus=10)
+nsim <- 100
 sfExport('run_em2','om')
 out <- sfLapply(1:nsim, run_em2)
 sfStop()

@@ -41,16 +41,14 @@ run_em2 <- function(i){
   siminput <- input
   true <- om$par
   rm(om);
-  gc() ## try to svae on memory
-  tfit <- fit_wham(siminput, do.fit=TRUE, do.osa = FALSE, do.retro = FALSE,
-                   MakeADFun.silent = 0, do.sdrep=FALSE, n.newton=0)
-  ## restart optimizer and do newton step to get convergence better
-  siminput$par <- tfit$parList
-  tfit <- fit_wham(siminput, do.fit=TRUE, do.osa = FALSE, do.retro = FALSE,
-                   MakeADFun.silent = 0, do.sdrep=FALSE, n.newton=1)
-  rep <- tfit$report(tfit$par)
-  ##  if(tfit$opt$convergence!=0) return(NULL)
+  gc() ## try to svae on memory?
 
+  tfit <- tryCatch(fit_wham(siminpust, do.fit=TRUE, do.osa = FALSE, do.retro = FALSE,
+                   MakeADFun.silent = 0, do.sdrep=FALSE,
+                   n.newton=2),
+                   error=function(e) "error")
+  if(class(tfit) != "character" & tfit=='error') return(NULL)
+  rep <- tfit$report(tfit$par)
   ind <- which.max(abs(tfit$gr(tfit$opt$par)))
   stopifnot(ind %in% 1:length(tfit$opt$par))
   maxgrad <- abs(tfit$gr(tfit$opt$par)[ind])
