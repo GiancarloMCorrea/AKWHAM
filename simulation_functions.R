@@ -43,12 +43,13 @@ run_em2 <- function(i){
   rm(om);
   gc() ## try to svae on memory?
 
-  tfit <- tryCatch(fit_wham(siminpust, do.fit=TRUE, do.osa = FALSE, do.retro = FALSE,
-                   MakeADFun.silent = 0, do.sdrep=FALSE,
-                   n.newton=2),
+  tfit <- tryCatch(fit_wham(siminput, do.fit=TRUE, do.osa = FALSE,
+                            do.retro = FALSE,
+                            MakeADFun.silent = 0, do.sdrep=FALSE,
+                            n.newton=0),
                    error=function(e) "error")
-  if(class(tfit) != "character" & tfit=='error') return(NULL)
-  rep <- tfit$report(tfit$par)
+  if(class(tfit) == "character" && tfit=='error') return(NULL)
+  rep <- tfit$report(tfit$opt$par)
   ind <- which.max(abs(tfit$gr(tfit$opt$par)))
   stopifnot(ind %in% 1:length(tfit$opt$par))
   maxgrad <- abs(tfit$gr(tfit$opt$par)[ind])
@@ -60,6 +61,7 @@ run_em2 <- function(i){
   sc <- data.frame(par=names(true), true=true,
                    est=tfit$opt$par, year=NA)
   out <- rbind(ssb,catch,f,rec,sc) %>% cbind(rep=i, maxgrad=maxgrad, maxpar=ind)
+  saveRDS(file.path(outdir, paste0('simfit_', i,'.RDS')), object=out)
   return(out)
 }
 
