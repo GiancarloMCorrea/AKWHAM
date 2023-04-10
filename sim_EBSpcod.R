@@ -35,13 +35,13 @@ OMinput = fit_a$input
 OMinput$data$simulate_data <- c(1,1,1) 
 OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
 # Fix selectivity parameters? Cole, decide this:
-fit_a$input$map$logit_selpars <- factor(NA*fit_a$input$par$logit_selpars)
-fit_a$input$map$selpars_re <- factor(NA*fit_a$input$par$selpars_re)
+OMinput$map$logit_selpars <- factor(NA*OMinput$map$logit_selpars)
+OMinput$map$selpars_re <- factor(NA*OMinput$map$selpars_re)
 # Run OM again: Make sure you have ~2 hours
 om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton=0)
 om$par[which.max(abs(om$gr()))] # check the OM worked ok
 om$sdrep
-om$input$par <- om$env$parList(par=om$opt$par)
+
 #save(om, file = 'om.RData')
 # om2 <- fit_wham(om$input, do.osa = FALSE, do.fit = TRUE,
 #                do.retro = FALSE, n.newton=0)
@@ -106,13 +106,13 @@ OMinput = fit_b$input
 OMinput$data$simulate_data <- c(1,1,1) 
 OMinput$data$simulate_state <- OMinput$data$simulate_state*0 
 # Fix selectivity parameters? Cole, decide this
-fit_b$input$map$logit_selpars <- factor(NA*fit_b$input$par$logit_selpars)
-fit_b$input$map$selpars_re <- factor(NA*fit_b$input$par$selpars_re)
+OMinput$map$logit_selpars <- factor(NA*OMinput$map$logit_selpars)
+OMinput$map$selpars_re <- factor(NA*OMinput$map$selpars_re)
 # Run OM again: Make sure you have ~2 hours
 om <- fit_wham(OMinput, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton=0)
 om$par[which.max(abs(om$gr()))] # check the OM worked ok
 om$sdrep
-om$input$par <- om$env$parList(par=om$opt$par)
+
 #save(om, file = 'om.RData')
 # om2 <- fit_wham(om$input, do.osa = FALSE, do.fit = TRUE,
 #                do.retro = FALSE, n.newton=0)

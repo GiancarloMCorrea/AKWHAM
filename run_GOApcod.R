@@ -1,5 +1,5 @@
 # Install WHAM package (growth branch):
-# remotes::install_github(repo = 'gmoroncorrea/wham', ref='growth', INSTALL_opts = c("--no-docs", "--no-multiarch", "--no-demo"))
+# remotes::install_github(repo = 'GiancarloMCorrea/wham', ref='growth', INSTALL_opts = c("--no-docs", "--no-multiarch", "--no-demo"))
 
 # Set you WD:
 setwd("~/GitHub/AKWHAM")
@@ -20,11 +20,7 @@ source('aux_fun.R')
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/GOA_pcod/GOAPcod2022Oct25_wADFG.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/GOA_pcod') # from OM
 
-# Model names in plot:
-model_names = c('SS', 'WHAM')
-
 # Some model parameters:
-mycols = c("#D16103", "#52854C")
 n_ages = 10
 length_vector = SS_report$lbins
 min_year = SS_report$startyr
@@ -215,6 +211,7 @@ input_a = prepare_wham_input(model_name="goa_cod_1",
                                NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                              recruit_model = 2,
                                              N1_pars = c(NAA_SS[1,1], 0),
+                                             #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
                                              recruit_pars = mean(NAA_SS[,1])),
                                growth = list(model = 'vB_classic',
                                              re = c('none', 'none', 'none'),
@@ -243,90 +240,4 @@ save(fit_a, file = 'GOA_pcod/fit_a.RData')
 
 # Make plots
 dir.create(path = 'GOA_pcod/fit_a')
-plot_wham_output(mod = fit_a, dir.main = 'GOA_pcod/fit_a', out.type = 'pdf')
-
-# -------------------------------------------------------------------------
-# Plot SSB:
-
-# Get SSB from SS:
-SS_SSB = SS_report$derived_quants[grep(pattern = 'SSB_', x = SS_report$derived_quants$Label),]
-data1 = cbind(data.frame(model = 'SS', year = fit_a$years), 
-              SS_SSB[3:48, c('Value', 'StdDev')])
-colnames(data1)[3:4] = c('est', 'sd')
-data1$ssb_min = data1$est - 1.96*data1$sd
-data1$ssb_max = data1$est + 1.96*data1$sd
-
-# WHAM model:
-this_model = fit_a
-model_name = 'WHAM'
-tmp = data.frame(name = names(this_model$sdrep$value),
-                 est = this_model$sdrep$value, sd = this_model$sdrep$sd)
-data2 = cbind(model = model_name, year=1977:2022,
-              filter(tmp, name=='log_SSB') %>% dplyr::select(-name))
-data2$ssb_min = exp(data2$est-1.96*data2$sd)
-data2$ssb_max = exp(data2$est+1.96*data2$sd)
-data2$est = exp(data2$est)
-
-# Make plot:
-plot_data =rbind(data1, data2)
-plot_data$model = factor(plot_data$model, levels = model_names)
-
-p1 = ggplot(plot_data, aes(year, est*1e-06, ymin=ssb_min*1e-06, ymax=ssb_max*1e-06,
-                      fill=model, color=model)) +
-  ylim(0,NA) + labs(y='SSB (million tons)', x = NULL) +
-  geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
-  labs( color=NULL, fill=NULL) +
-  scale_fill_brewer(palette = 'Set1') +
-  scale_color_brewer(palette = 'Set1') +
-  theme_bw() +
-  annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())
-# ggsave(filename = 'GOA_pcod/compare_SSB.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
-# -------------------------------------------------------------------------
-# Plot LAA:
-
-# Get LAA from SS:
-data1 = data.frame(ages = SS_report$endgrowth$int_Age[2:11], 
-                   LAA = SS_report$endgrowth$Len_Beg[2:11], 
-                   SD = SS_report$endgrowth$SD_Beg[2:11], 
-                   model = 'SS')
-data1$len_min = data1$LAA - 1.96*data1$SD
-data1$len_max = data1$LAA + 1.96*data1$SD
-
-# Get LAA from WHAM:
-data2 = data.frame(ages = 1:n_ages, LAA = fit_a$rep$LAA[1,], 
-                   SD = fit_a$rep$SDAA[1,], model = 'WHAM')
-data2$len_min = data2$LAA - 1.96*data2$SD
-data2$len_max = data2$LAA + 1.96*data2$SD
-
-# Make plot:
-plot_data =rbind(data1, data2)
-plot_data$model = factor(plot_data$model, levels = model_names)
-
-p2 = ggplot(plot_data, aes(ages, LAA, ymin=len_min, ymax=len_max,
-                      fill=model, color=model)) +
-  ylim(0,NA) + labs(y='Mean length (cm)', x = NULL) +
-  geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
-  labs( color=NULL, fill=NULL) +
-  scale_fill_brewer(palette = 'Set1') +
-  scale_color_brewer(palette = 'Set1') +
-  theme_bw() +
-  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-  scale_x_continuous(breaks = 1:10, labels = 1:10) +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.95), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())
-
-# Merge plots:
-png(filename = 'GOA_pcod/main_GOApcod.png', width = 190, height = 70, units = 'mm', res = 500)
-gridExtra::grid.arrange(p1, p2, ncol = 2)
-dev.off()
+plot_wham_output(mod = fit_a, dir.main = 'GOA_pcod/fit_a', out.type = 'png')

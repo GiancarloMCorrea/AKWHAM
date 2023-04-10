@@ -1,9 +1,10 @@
-add_ci <- function(g, ci, alpha, ...){
+add_ci <- function(g, ci, alpha, showMedian = FALSE, medianCol = '#000000', ...){
   stopifnot(length(ci)==length(alpha))
   for(ii in 1:length(ci))
     g <- g+stat_summary(fun.data = median_hilow, fun.args = list(conf.int = ci[ii]),
                         geom = 'ribbon', alpha = alpha[ii],...)
-  g
+   if(showMedian) g = g + stat_summary(fun = median, geom = "line", linewidth = 0.5, colour = medianCol)
+  return(g)
 }
 
 run_em <- function(i){

@@ -69,6 +69,52 @@ plot_waa_fit <- function(fit, plot=TRUE, by.cohort=TRUE, minyr=1900, maxyr=2100,
   return(invisible(waa))
 }
 
+# No obs data:
+plot_waa_proj <- function(mods, plot = TRUE, minyr=1900, maxyr=2100, sizeX = 10, myCols, modNames, projYear){
+  require(ggplot2);require(dplyr)
+
+  save_waa = NULL
+  for(i in seq_along(mods)) {
+    fit = mods[[i]]
+    ind <- fit$input$data$waa_pointer_ssb
+    nages = length(fit$ages.lab)
+    ## get SE for SSB matrix
+    se <- summary(fit$sdrep, select='all')[,2]
+    se <- as.numeric(array(se[names(se)=='pred_waa'],
+                           dim=c(dim(fit$input$data$waa)[1], fit$input$data$n_years_model+fit$input$data$n_years_proj,
+                            nages))[ind,,])
+    if(length(se)==0)
+      stop("No ADREPORT variable for pred_waa found, update WHAM")
+    e <- as.numeric(fit$rep$pred_waa[ind,,])
+    waa <- data.frame(age=rep(fit$ages.lab, each=fit$input$data$n_years_model+fit$input$data$n_years_proj),
+                      year=rep(c(fit$years, max(fit$years) + 1:fit$input$data$n_years_proj), times=length(fit$ages.lab)),
+                      exp=e, ymin=e-1.96*se, ymax=e+1.96*se) %>%
+      mutate(age=factor(age, levels=fit$ages.lab),
+             cohort=year-as.numeric(age))
+    waa$model = fit$model_name
+    save_waa = rbind(save_waa, waa)
+  }
+
+  save_waa <- filter(save_waa, year>=minyr, year<=maxyr)
+  save_waa$model = factor(save_waa$model, labels = modNames)
+
+  g0 <- ggplot(save_waa, aes(year, exp, ymin=ymin, ymax=ymax, fill = model, color = model))+
+      facet_wrap('age', scales='free_y') +
+      theme(axis.text=element_text(size=sizeX))
+  g <- g0+
+    geom_ribbon(alpha=.3, color = NA)+
+    geom_vline(xintercept = projYear, linetype = 'dashed') +
+    scale_fill_manual(values = myCols) +
+    scale_color_manual(values = myCols) +
+    geom_line(lwd=1)+
+    theme_bw() +
+    theme(legend.position = c(0.8, 0.15)) +
+    labs(y='Mean weight (kg)', x=NULL, color=NULL, fill=NULL) 
+  if(plot) print(g)
+  return(invisible(save_waa))
+}
+
+
 get_caal_from_SS = function(caal_SSdata, fleet, model_years, model_lengths, model_ages) {
   
   # Filter data and remove age0 if present
@@ -191,6 +237,7 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
   input$map$log_NAA_sigma = factor(NA) # fix sigma
   input$map$log_N1_pars = factor(c(1,NA))
+  #input$map$log_N1_pars = factor(rep(NA, times = length(input$par$log_N1_pars)))
   # log_NAA initial values:
   input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
   # Fishing mortality values:
@@ -205,10 +252,11 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$map$F_devs = factor(c(1:((n_years-1)*2), rep(NA, times = 9), 91:126))
   # Add time block for M 2014-2016:
   input$par$M_re = matrix(rep(log(SS_report$Z_at_age$`0`[SS_report$Z_at_age$Yr %in% wham_data$years]) - log(SS_report$Natural_Mortality[1,5]), times = n_ages), ncol = n_ages)
-  tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
-  tmpMmatrix[years %in% 2014:2016] = 1
-  #input$par$M_repars[1] = log(0.1)
-  input$map$M_re = factor(as.vector(tmpMmatrix))
+  input$map$M_re = factor(rep(NA, times = length(input$par$M_re)))
+  input$map$M_a = factor(rep(NA, times = length(input$par$M_a)))
+  #tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
+  #tmpMmatrix[years %in% 2014:2016] = 1
+  #input$map$M_re = factor(as.vector(tmpMmatrix))
   # Deviations in selectivity parameters (initial values): 
   SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% years,]
   # FISHERY 1:
@@ -274,7 +322,8 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$par$sel_repars[,1] = log(0.5)
   input$map$sel_repars = factor(rep(NA, times = length(input$map$sel_repars)))
   # Fix selectivity parameters as in SS
-  input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:15, 16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
+  #input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
+  input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:5, NA, 6:15, NA, 16:18, NA, NA, NA, 19, NA, NA, NA, 20:22))
   #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
   # Fix process error for Ecov:
   #input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
@@ -291,6 +340,7 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   # Update some input information:
   input$par$log_NAA_sigma = log(SS_report$sigma_R_in) # sigma as in SS
   input$map$log_NAA_sigma = factor(NA) # fix sigma
+  #input$map$log_N1_pars = factor(rep(NA, times = length(input$par$log_N1_pars)))
   # log_NAA initial values:
   input$par$log_NAA = as.matrix(log(NAA_SS)[-1,])
   # Fishing mortality values:

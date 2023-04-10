@@ -1,5 +1,5 @@
 # Install WHAM package (growth branch):
-# remotes::install_github(repo = 'gmoroncorrea/wham', ref='growth', INSTALL_opts = c("--no-docs", "--no-multiarch", "--no-demo"))
+# remotes::install_github(repo = 'GiancarloMCorrea/wham', ref='growth', INSTALL_opts = c("--no-docs", "--no-multiarch", "--no-demo"))
 
 # Set you WD:
 setwd("~/GitHub/AKWHAM")
@@ -16,9 +16,6 @@ source('aux_fun.R')
 # https://github.com/afsc-assessments/EBS_PCOD/tree/main/2022_ASSESSMENT/NOVEMBER_MODELS/NEW_MODELS/Model19_12A
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/EBS_pcod/BSPcod22_OCT.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/EBS_pcod') # from OM
-
-# Model names in plot:
-model_names = c('SS', 'AR1_WHAM', 'ecov_WHAM')
 
 # Some model parameters:
 n_ages = 20
@@ -176,12 +173,13 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
                                         est_ages = 1),
                                NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                              recruit_model = 2,
-                                             N1_pars = c(NAA_SS[1,1], 0.12),
+                                             N1_pars = c(NAA_SS[1,1], 0.4),
+                                             #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
                                              recruit_pars = mean(NAA_SS[,1])),
                                growth = list(model = 'Richards',
                                              re = c('none', 'none', 'ar1_y', 'none'), 
                                              init_vals = GWpars[1:4],
-                                             est_pars = c(1:4),
+                                             est_pars = 1:4,
                                              SD_vals = GWpars[5:6],
                                              SD_est = 1:2),
                                LW = list(re = c('none', 'none'),
@@ -197,7 +195,16 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
 input_a = post_input_EBSpcod(input_a, SS_report, NAA_SS)
 input_a$map$Ecov_beta = factor(rep(NA, times = length(input_a$map$Ecov_beta))) # no effect on L1
 input_a$random = c("growth_re", "Ecov_re")
+#input_a$random = NULL
 
+#input_a$map$selpars_re = factor(rep(NA, times = length(input_a$par$selpars_re)))
+#input_a$map$logit_selpars = factor(rep(NA, times = length(input_a$par$logit_selpars)))
+#input_a$map$growth_a = factor(rep(NA, times = length(input_a$par$growth_a)))
+#input_a$map$SD_par = factor(rep(NA, times = length(input_a$par$SD_par)))
+#input_a$map$M_a = factor(rep(NA, times = length(input_a$par$M_a)))
+#input_a$map$logit_q = factor(rep(NA, times = length(input_a$par$logit_q)))
+#input_a$map$index_paa_pars = factor(rep(NA, times = length(input_a$par$index_paa_pars)))
+  
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
 check_convergence(fit_a)
@@ -206,17 +213,6 @@ save(fit_a, file = 'EBS_pcod/fit_a.RData')
 # Make plots
 dir.create(path = 'EBS_pcod/fit_a')
 plot_wham_output(mod = fit_a, dir.main = 'EBS_pcod/fit_a', out.type = 'pdf')
-
-# Get SSB estimates:
-this_model = fit_a
-model_name = 'AR1_WHAM'
-tmp = data.frame(name = names(this_model$sdrep$value),
-                 est = this_model$sdrep$value, sd = this_model$sdrep$sd)
-SSBdata1 = cbind(model = model_name, year=1977:2022,
-                 filter(tmp, name=='log_SSB') %>% dplyr::select(-name))
-SSBdata1$ssb_min = exp(SSBdata1$est-1.96*SSBdata1$sd)
-SSBdata1$ssb_max = exp(SSBdata1$est+1.96*SSBdata1$sd)
-SSBdata1$est = exp(SSBdata1$est)
 
 # -------------------------------------------------------------------------
 # Model with Ecov L1
@@ -234,7 +230,7 @@ input_b = prepare_wham_input(model_name="ebs_cod_2",
                              NAA_re = list(sigma="rec", cor = 'iid', N1_model = 1,
                                            recruit_model = 2,
                                            #N1_pars = as.vector(as.matrix(NAA_SS[1,])),
-                                           N1_pars = c(NAA_SS[1,1], 0.12),
+                                           N1_pars = c(NAA_SS[1,1], 0.4),
                                            recruit_pars = mean(NAA_SS[,1])),
                              growth = list(model = 'Richards',
                                            re = c('none', 'none', 'none', 'none'),
@@ -264,91 +260,4 @@ save(fit_b, file = 'EBS_pcod/fit_b.RData')
 # Make plots
 dir.create(path = 'EBS_pcod/fit_b')
 plot_wham_output(mod = fit_b, dir.main = 'EBS_pcod/fit_b', out.type = 'pdf')
-
-# Get SSB estimates:
-this_model = fit_b
-model_name = 'ecov_WHAM'
-tmp = data.frame(name = names(this_model$sdrep$value),
-                 est = this_model$sdrep$value, sd = this_model$sdrep$sd)
-SSBdata2 = cbind(model = model_name, year=1977:2022,
-                 filter(tmp, name=='log_SSB') %>% dplyr::select(-name))
-SSBdata2$ssb_min = exp(SSBdata2$est-1.96*SSBdata2$sd)
-SSBdata2$ssb_max = exp(SSBdata2$est+1.96*SSBdata2$sd)
-SSBdata2$est = exp(SSBdata2$est)
-
-# -------------------------------------------------------------------------
-# Plot SSB:
-
-# Get SSB from SS:
-SS_SSB = SS_report$derived_quants[grep(pattern = 'SSB_', x = SS_report$derived_quants$Label),]
-SSBdata0 = cbind(data.frame(model = 'SS', year = wham_data$years), 
-              SS_SSB[3:48, c('Value', 'StdDev')])
-colnames(SSBdata0)[3:4] = c('est', 'sd')
-SSBdata0$ssb_min = SSBdata0$est - 1.96*SSBdata0$sd
-SSBdata0$ssb_max = SSBdata0$est + 1.96*SSBdata0$sd
-
-# Merge data:
-plot_data = rbind(SSBdata0, SSBdata1, SSBdata2)
-plot_data$est = plot_data$est*1E-06
-plot_data$ssb_min = plot_data$ssb_min*1E-06
-plot_data$ssb_max = plot_data$ssb_max*1E-06
-
-plot_data$model = factor(plot_data$model, levels = model_names)
-
-# Make plot mean SSB:
-p1 = ggplot(plot_data, aes(year, est, ymin=ssb_min, ymax=ssb_max,
-                           fill=model, color=model)) +
-  ylim(0,NA) + labs(y='SSB (million tons)', x = NULL) +
-  geom_ribbon(alpha=.3, color = NA) + geom_line(lwd=1) +
-  labs( color=NULL, fill=NULL) +
-  scale_fill_brewer(palette = 'Set1') +
-  scale_color_brewer(palette = 'Set1') +
-  theme_bw() +
-  annotate("text", label = 'A', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.075), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())
-
-# -------------------------------------------------------------------------
-# Plot L1 temporal variability:
-LAA_a = data.frame(year = min_year:max_year, L1 = fit_a$rep$LAA[,1], model = 'AR1_WHAM')
-LAA_b = data.frame(year = min_year:max_year, L1 = fit_b$rep$LAA[,1], model = 'ecov_WHAM')
-LAA_SS = data.frame(year = min_year:(max_year-1), L1 = SS_report$growthseries[,6], model = 'SS')
-
-# Merge datasets:
-plot_data = rbind(LAA_a, LAA_b, LAA_SS)
-plot_data$model = factor(plot_data$model, levels = model_names)
-
-# Make plot:
-p2 = ggplot(plot_data, aes(year, L1, color=model)) +
-  geom_line(lwd=1) +
-  labs(y='Mean length-at-age 1 (cm)', x = NULL) +
-  labs( color=NULL, fill=NULL) +
-  scale_fill_brewer(palette = 'Set1') +
-  scale_color_brewer(palette = 'Set1') +
-  theme_bw() +
-  coord_cartesian(ylim=c(6, 18)) +
-  annotate("text", label = 'B', x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-  guides(fill=guide_legend(title=NULL,nrow = 1), 
-         color=guide_legend(title=NULL,nrow = 1),
-         shape = guide_legend(override.aes = list(linewidth = 0.8))) +
-  theme(legend.position=c(0.5,0.075), 
-        legend.text = element_text(size = 10),
-        legend.background = element_blank())
-# ggsave(filename = 'EBS_pcod/compare_L1.png', width = 190, height = 120, units = 'mm', dpi = 500)
-
-# Plot Ecov:
-p3 = plot_ecov_fit(fit_a, label = 'C', myCol = "#377EB8")
-p4 = plot_ecov_fit(fit_b, label = 'D', myCol = "#4DAF4A")
-
-# Merge plots:
-png(filename = 'EBS_pcod/main_EBSpcod.png', width = 190, height = 160, units = 'mm', res = 500)
-gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
-dev.off()
-
-
-# -------------------------------------------------------------------------
 
