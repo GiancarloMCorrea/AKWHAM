@@ -14,6 +14,7 @@ source('aux_fun.R')
 # Load some files:
 load('aux_data/input.RData') # input data as in original WHAM model (Cole's)
 load('aux_data/cv_survey.RData') # CV for observed WAA (survey) 
+load('aux_data/asdrep.RData') # CV for observed WAA (survey) 
 # see here: https://github.com/afsc-assessments/GOApollock/blob/dev/pkwham/pkwham_test.R
 
 # Some model parameters:

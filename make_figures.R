@@ -1,6 +1,6 @@
 source('aux_fun.R')
-theme_set(theme_bw())
 require(ggplot2)
+theme_set(theme_bw())
 
 # Make diagram ------------------------------------------------------------
 
@@ -65,12 +65,14 @@ plot_data_overview(datlist = mydat, sectionCex = 0.9)
 r4ss::SSplotData(replist = goacod, subplots = 2, margins = c(1.7,1,2,4.5))
 title(main = 'GOA Pacific cod')
 r4ss::SSplotData(replist = ebscod, subplots = 2, margins = c(1.7,1,2,4.5))
-title(main = 'EBS Pacific cod')
+title(main = 'BS Pacific cod')
 dev.off()
 
-
+# -------------------------------------------------------------------------
 # GOA pollock plots -------------------------------------------------------
-model_names = c('ADMB', 'wham_ewaa', 'wham_iid', 'wham_2dar1')
+# -------------------------------------------------------------------------
+
+model_names = c('Original', 'wham_ewaa', 'wham_iid', 'wham_2dar1')
 
 # ADMB model:
 asdrep = readRDS('aux_data/adsdrep_selex_fixed.RDS') # ADMB pollock model output
@@ -234,16 +236,78 @@ plot_waa_fit(fit = fit_c, minyr=1977, maxyr=2021, by.cohort = FALSE)
 ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)
 
 # Plot WAA proj:
-plot_waa_proj(mods = list(proj_b, proj_c), minyr=2020, maxyr=2024, myCols = thisCols[2:3], 
-              modNames = model_names[3:4], projYear = 2021)
+plot_waa_proj(mods = list(proj_a, proj_b, proj_c), minyr=2020, maxyr=2024, myCols = thisCols[1:3], 
+              modNames = model_names[2:4], projYear = 2021)
 ggsave(filename = 'GOA_pollock/summary_WAA_proj.png', width = 190, height = 140, units = 'mm', dpi = 500)
 
+# Make selectivity plot (compare ADMB and WHAM)
 
+all_years = 1970:2021
+all_ages = 1:10
+all_fleets = 1:7
+fleets_names = c('Fishery', 'Age 3+ Shelikof', 'NMFS BT', 'ADFG BT', 
+                 'Age 1 Shelikof', 'Age 2 Shelikof', 'Summer AT')
+
+# Read ADMB selex:
+load('aux_data/admb_selex.RData')
+admb_selex$type = model_names[1]
+
+# Organize WHAM output
+k = 1
+tmp_df = list()
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(year = all_years[i], age = all_ages, 
+                             selex = fit_a$rep$selAA[[j]][i,], fleet = fleets_names[j], 
+                             type = model_names[2])
+    k = k + 1
+  }
+}
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(year = all_years[i], age = all_ages, 
+                             selex = fit_b$rep$selAA[[j]][i,], fleet = fleets_names[j], 
+                             type = model_names[3])
+    k = k + 1
+  }
+}
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(year = all_years[i], age = all_ages, 
+                             selex = fit_c$rep$selAA[[j]][i,], fleet = fleets_names[j], 
+                             type = model_names[4])
+    k = k + 1
+  }
+}
+
+# Merge both datasets:
+plot_data = dplyr::bind_rows(tmp_df)
+plot_data = rbind(admb_selex, plot_data)
+plot_data$fleet = factor(plot_data$fleet, levels = fleets_names)
+plot_data$age = factor(plot_data$age)
+
+# Make plot:
+ggplot(plot_data, aes(x = year, y = age)) + 
+  geom_raster(aes(fill=selex)) + 
+  scale_fill_viridis_c() +
+  labs(x="Year", y="Age", fill = 'Selectivity') +
+  scale_x_continuous(breaks = c(1970, 1980, 1990, 2000, 2010, 2020), 
+                     labels = c(1970, '', 1990, '', 2010, '')) +
+  theme_bw() + theme(axis.text.x=element_text(size=7.5, angle=0, vjust=0.3),
+                     axis.text.y=element_text(size=9),
+                     plot.title=element_text(size=11),
+                     legend.position = 'top') +
+  facet_grid(type ~ fleet)
+ggsave(filename = 'GOA_pollock/selex_GOApollock.png', width = 190, height = 160, units = 'mm', dpi = 500)
+
+
+# -------------------------------------------------------------------------
 # GOA pcod plots -------------------------------------------------------
+# -------------------------------------------------------------------------
 
 n_ages = 10
 # Model names in plot:
-model_names = c('SS', 'wham')
+model_names = c('SS3', 'wham')
 
 SS_report = r4ss::SS_output(dir = 'SS_models/GOA_pcod') # from OM
 # WHAM model:
@@ -327,15 +391,64 @@ png(filename = 'GOA_pcod/main_GOApcod.png', width = 190, height = 70, units = 'm
 gridExtra::grid.arrange(p1, p2, ncol = 2)
 dev.off()
 
+# Make selectivity plot (compare SS and WHAM)
 
+all_years = 1977:2022
+all_fleets = 1:5
+tmp_df = list()
+
+# Organize SS3 output:
+SelMat = SS_report$sizeselex[SS_report$sizeselex$Factor == 'Lsel' & SS_report$sizeselex$Yr >= 1977 & SS_report$sizeselex$Yr <= 2022 & SS_report$sizeselex$Fleet <= 5, ]
+k = 1
+for(j in seq_along(all_fleets)) {
+  ind_vec = numeric(length(all_years))
+  for(i in seq_along(all_years)) {
+    ind_yr = which(SelMat$Fleet == all_fleets[j] & SelMat$Yr == all_years[i])
+    if(length(ind_yr) > 0) ind_vec[i] = ind_yr
+    else ind_vec[i] = ind_vec[i-1]
+    
+    temp = SelMat[ind_vec[i], ]
+    tmp_df[[k]] = data.frame(fleet = j, year = all_years[i], len = as.numeric(colnames(temp)[6:ncol(temp)]), 
+                             selex = as.vector(as.matrix(temp[,6:ncol(temp)])), type = model_names[1])
+    k = k + 1
+  }
+}
+
+# Organize WHAM output
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(fleet = j, year = all_years[i], len = fit_a$input$data$lengths + 0.5, 
+                             selex = fit_a$rep$selAL[[j]][i,], type = model_names[2])
+    k = k + 1
+  }
+}
+
+# Merge both datasets:
+plot_data = dplyr::bind_rows(tmp_df)
+plot_data$fleet = factor(plot_data$fleet, levels = 1:5, labels = c('FshTrawl', 'FshLL', 'FshPot', 'Srv', 'LLSrv'))
+
+# Make plot:
+ggplot(plot_data, aes(x = year, y = len)) + 
+  geom_raster(aes(fill=selex)) + 
+  scale_fill_viridis_c() +
+  labs(x="Year", y="Length (cm)", fill = 'Selectivity') +
+  theme_bw() + theme(axis.text.x=element_text(size=7.5, angle=0, vjust=0.3),
+                     axis.text.y=element_text(size=9),
+                     plot.title=element_text(size=11),
+                     legend.position = 'top') +
+  facet_grid(type ~ fleet)
+ggsave(filename = 'GOA_pcod/selex_GOApcod.png', width = 190, height = 130, units = 'mm', dpi = 500)
+
+# -------------------------------------------------------------------------
 # EBS pcod plots ----------------------------------------------------------
+# -------------------------------------------------------------------------
 
 n_ages = 20
 years = 1977:2022
 SS_report = r4ss::SS_output(dir = 'SS_models/EBS_pcod') # from OM
 
 # Model names in plot:
-model_names = c('SS', 'wham_ar1', 'wham_ecov')
+model_names = c('SS3', 'wham_ar1', 'wham_ecov')
 
 # Get SSB estimates:
 load('EBS_pcod/fit_a.RData')
@@ -428,4 +541,88 @@ p4 = plot_ecov_fit(fit_b, label = 'D', myCol = "#4DAF4A")
 png(filename = 'EBS_pcod/main_EBSpcod.png', width = 190, height = 160, units = 'mm', res = 500)
 gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 dev.off()
+
+# Compare models with difference logsime for Ecov:
+load('EBS_pcod/fit_a.RData')
+fit_a_02 = fit_a
+load('EBS_pcod/fit_a_01.RData')
+fit_a_01 = fit_a
+load('EBS_pcod/fit_a_001.RData')
+fit_a_001 = fit_a
+load('EBS_pcod/fit_b.RData')
+fit_b_02 = fit_b
+load('EBS_pcod/fit_b_01.RData')
+fit_b_01 = fit_b
+load('EBS_pcod/fit_b_001.RData')
+fit_b_001 = fit_b
+
+a1 = plot_ecov_fit(fit_a_02, label = 'obs error = 0.2', myCol = "#377EB8")
+a2 = plot_ecov_fit(fit_a_01, label = 'obs error = 0.1', myCol = "#377EB8")
+a3 = plot_ecov_fit(fit_a_001, label = 'obs error = 0.01', myCol = "#377EB8")
+b1 = plot_ecov_fit(fit_b_02, label = 'obs error = 0.2', myCol = "#4DAF4A")
+b2 = plot_ecov_fit(fit_b_01, label = 'obs error = 0.1', myCol = "#4DAF4A")
+b3 = plot_ecov_fit(fit_b_001, label = 'obs error = 0.01', myCol = "#4DAF4A")
+
+# Merge plots:
+png(filename = 'EBS_pcod/ecov_sigma_EBSpcod.png', width = 190, height = 220, units = 'mm', res = 500)
+gridExtra::grid.arrange(a1, b1, a2, b2, a3, b3, ncol = 2)
+dev.off()
+
+# Get AIC table:
+all_mods = wham::compare_wham_models(mods = list(fit_a_02, fit_a_01, fit_a_001,
+                                                 fit_b_02, fit_b_01, fit_b_001), table.opts = list(calc.rho = F))
+
+# Make selectivity plot (compare SS and WHAM)
+all_years = 1977:2022
+all_fleets = 1:2
+tmp_df = list()
+
+# Organize SS3 output:
+SelMat = SS_report$sizeselex[SS_report$sizeselex$Factor == 'Lsel' & SS_report$sizeselex$Yr >= 1977 & SS_report$sizeselex$Yr <= 2022 & SS_report$sizeselex$Fleet <= 5, ]
+k = 1
+for(j in seq_along(all_fleets)) {
+  ind_vec = numeric(length(all_years))
+  for(i in seq_along(all_years)) {
+    ind_yr = which(SelMat$Fleet == all_fleets[j] & SelMat$Yr == all_years[i])
+    if(length(ind_yr) > 0) ind_vec[i] = ind_yr
+    else ind_vec[i] = ind_vec[i-1]
+    
+    temp = SelMat[ind_vec[i], ]
+    tmp_df[[k]] = data.frame(fleet = j, year = all_years[i], len = as.numeric(colnames(temp)[10:ncol(temp)]), 
+                             selex = as.vector(as.matrix(temp[,10:ncol(temp)])), type = model_names[1])
+    k = k + 1
+  }
+}
+
+# Organize WHAM output
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(fleet = j, year = all_years[i], len = fit_a$input$data$lengths + 0.5, 
+                             selex = fit_a$rep$selAL[[j]][i,], type = model_names[2])
+    k = k + 1
+  }
+}
+for(j in seq_along(all_fleets)) {
+  for(i in seq_along(all_years)) {
+    tmp_df[[k]] = data.frame(fleet = j, year = all_years[i], len = fit_b$input$data$lengths + 0.5, 
+                             selex = fit_b$rep$selAL[[j]][i,], type = model_names[3])
+    k = k + 1
+  }
+}
+
+# Merge both datasets:
+plot_data = dplyr::bind_rows(tmp_df)
+plot_data$fleet = factor(plot_data$fleet, levels = 1:2, labels = c('Fishery', 'Survey'))
+
+# Make plot:
+ggplot(plot_data, aes(x = year, y = len)) + 
+  geom_raster(aes(fill=selex)) + 
+  scale_fill_viridis_c() +
+  labs(x="Year", y="Length (cm)", fill = 'Selectivity') +
+  theme_bw() + theme(axis.text.x=element_text(size=11, angle=0, vjust=0.3),
+                     axis.text.y=element_text(size=11),
+                     plot.title=element_text(size=11),
+                     legend.position = 'top') +
+  facet_grid(type ~ fleet)
+ggsave(filename = 'EBS_pcod/selex_EBSpcod.png', width = 190, height = 220, units = 'mm', dpi = 500)
 

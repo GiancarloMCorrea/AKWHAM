@@ -252,11 +252,11 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   input$map$F_devs = factor(c(1:((n_years-1)*2), rep(NA, times = 9), 91:126))
   # Add time block for M 2014-2016:
   input$par$M_re = matrix(rep(log(SS_report$Z_at_age$`0`[SS_report$Z_at_age$Yr %in% wham_data$years]) - log(SS_report$Natural_Mortality[1,5]), times = n_ages), ncol = n_ages)
-  input$map$M_re = factor(rep(NA, times = length(input$par$M_re)))
-  input$map$M_a = factor(rep(NA, times = length(input$par$M_a)))
-  #tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
-  #tmpMmatrix[years %in% 2014:2016] = 1
-  #input$map$M_re = factor(as.vector(tmpMmatrix))
+  #input$map$M_re = factor(rep(NA, times = length(input$par$M_re)))
+  #input$map$M_a = factor(rep(NA, times = length(input$par$M_a)))
+  tmpMmatrix = matrix(NA, ncol= n_ages, nrow = n_years)
+  tmpMmatrix[years %in% 2014:2016,] = 1
+  input$map$M_re = factor(as.vector(tmpMmatrix))
   # Deviations in selectivity parameters (initial values): 
   SSSelex = SS_report$SelSizeAdj[SS_report$SelSizeAdj$Yr %in% years,]
   # FISHERY 1:

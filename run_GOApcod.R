@@ -185,7 +185,7 @@ n_env_years = length(data_file$envdat$Yr)
 ecov <- list(
   label = c("env1"),
   mean = matrix(c(env1), ncol = 1),
-  logsigma = matrix(log(0.2), ncol = 1, nrow = n_env_years), # sigma = 0.2
+  logsigma = matrix(log(0.01), ncol = 1, nrow = n_env_years), # sigma = 0.2
   year = data_file$envdat$Yr,
   use_obs = matrix(1L, ncol=1, nrow=n_env_years),
   lag = list(rep(0, times = 8)),

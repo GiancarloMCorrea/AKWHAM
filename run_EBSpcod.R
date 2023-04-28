@@ -64,7 +64,7 @@ tmp_data = data.frame(year = wham_data$years, use = 1)
 tmp_data2 = merge(tmp_data, data_file$CPUE, by = 'year', all.x = TRUE)
 tmp_data2$use[is.na(tmp_data2$obs)] = -1
 wham_data$use_indices = matrix(tmp_data2$use, nrow = n_years, ncol = 1)
-# Turn off age comps for fishery and surveys (following WHAM philosophy)
+# Turn off age comps for fishery (following WHAM philosophy)
 wham_data$use_catch_paa = matrix(0L, nrow = n_years, ncol = wham_data$n_fleets)
 # Len comps catch:
 wham_lencomps = array(0, dim = c(wham_data$n_fleets, n_years, length(length_vector)))
@@ -150,7 +150,7 @@ env2$stand_index = (env2$mn_val - mean(env2$mn_val))/sd(env2$mn_val)
 ecov <- list(
   label = c("Bering10K"),
   mean = matrix(env2$stand_index, ncol = 1),
-  logsigma = matrix(log(0.2), ncol = 1, nrow = n_years), # sigma = 0.2
+  logsigma = matrix(log(0.1), ncol = 1, nrow = n_years), # sigma = 0.2
   #logsigma = 'est_1', # estimate sigma. WHAM estimates Ecov_obs_sigma = 0.598 for all years
   year = min_year:max_year,
   use_obs = matrix(1L, ncol=1, nrow=n_years),
@@ -200,7 +200,7 @@ input_a$random = c("growth_re", "Ecov_re")
 #input_a$map$selpars_re = factor(rep(NA, times = length(input_a$par$selpars_re)))
 #input_a$map$logit_selpars = factor(rep(NA, times = length(input_a$par$logit_selpars)))
 #input_a$map$growth_a = factor(rep(NA, times = length(input_a$par$growth_a)))
-#input_a$map$SD_par = factor(rep(NA, times = length(input_a$par$SD_par)))
+#input_a$map$SDgrowth_par = factor(rep(NA, times = length(input_a$par$SDgrowth_par)))
 #input_a$map$M_a = factor(rep(NA, times = length(input_a$par$M_a)))
 #input_a$map$logit_q = factor(rep(NA, times = length(input_a$par$logit_q)))
 #input_a$map$index_paa_pars = factor(rep(NA, times = length(input_a$par$index_paa_pars)))
@@ -255,7 +255,7 @@ input_b$random = "Ecov_re"
 #Run model:
 fit_b = fit_wham(input_b, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
 check_convergence(fit_b)
-save(fit_b, file = 'EBS_pcod/fit_b.RData')
+save(fit_b, file = 'EBS_pcod/fit_b_001.RData')
 
 # Make plots
 dir.create(path = 'EBS_pcod/fit_b')
