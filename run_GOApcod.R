@@ -17,6 +17,7 @@ source('aux_fun.R')
 # SS model can be found here: 
 # https://github.com/pete-hulson/goa_pcod/tree/master/2022/Stock_Synthesis_files/Model19.1a%20(22)%20-%20wADFG
 # Change Month column from 1 to 7 for surveys (len comps and CAAL) 
+# Fix par2 (selex) for fishery 1
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/GOA_pcod/GOAPcod2022Oct25_wADFG.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/GOA_pcod') # from OM
 

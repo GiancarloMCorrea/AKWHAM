@@ -325,8 +325,6 @@ post_input_GOApcod = function(input, SS_report, NAA_SS) {
   #input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:16, NA, 17:19, NA, NA, NA, 20, NA, NA, NA, 21:23))
   input$map$logit_selpars = factor(c(rep(NA, times = 120), 1:5, NA, 6:15, NA, 16:18, NA, NA, NA, 19, NA, NA, NA, 20:22))
   #input$map$logit_selpars = factor(rep(NA, times = length(input$map$logit_selpars)))
-  # Fix process error for Ecov:
-  #input$map$Ecov_process_pars = factor(rep(NA, times = length(input$map$Ecov_process_pars)))
 
   return(input)
 }

@@ -14,6 +14,7 @@ source('aux_fun.R')
 # SS files and outputs:
 # SS model can be found here: 
 # https://github.com/afsc-assessments/EBS_PCOD/tree/main/2022_ASSESSMENT/NOVEMBER_MODELS/NEW_MODELS/Model19_12A
+# Fix par 1 (selex) of fishery
 data_file = r4ss::SS_readdat_3.30(file = 'SS_models/EBS_pcod/BSPcod22_OCT.dat')
 SS_report = r4ss::SS_output(dir = 'SS_models/EBS_pcod') # from OM
 
@@ -39,6 +40,11 @@ selpars2 = SelecParams$Value[7:12]
 
 # NAA info from SS:
 NAA_SS = SS_report$natage[SS_report$natage$`Beg/Mid` == 'B' & SS_report$natage$Yr >= min_year & SS_report$natage$Yr <= max_year, 14:(14+n_ages-1)]
+
+# Ecov information (for L1):
+env1 = read.csv('aux_data/sebs_summer_bottom_temp.csv')
+env2 = env1[env1$year %in% (min_year):(max_year) & env1$GCM_scen == 'gfdl_ssp126', ] 
+env2$stand_index = (env2$mn_val - mean(env2$mn_val))/sd(env2$mn_val)
 
 # -------------------------------------------------------------------------
 # Prepare input data for WHAM:
@@ -141,23 +147,17 @@ wham_data$bias_correct_observation = 1
 
 # -------------------------------------------------------------------------
 # Model with iid_y L1
-# Ecov information (for L1):
-env1 = read.csv('aux_data/sebs_summer_bottom_temp.csv')
-env2 = env1[env1$year %in% (min_year):(max_year) & env1$GCM_scen == 'gfdl_ssp126', ] 
-# no lag (model does better and also correlation is higher)
-env2$stand_index = (env2$mn_val - mean(env2$mn_val))/sd(env2$mn_val)
 
 ecov <- list(
   label = c("Bering10K"),
   mean = matrix(env2$stand_index, ncol = 1),
-  logsigma = matrix(log(0.1), ncol = 1, nrow = n_years), # sigma = 0.2
-  #logsigma = 'est_1', # estimate sigma. WHAM estimates Ecov_obs_sigma = 0.598 for all years
+  logsigma = matrix(log(0.2), ncol = 1, nrow = n_years), # sigma = 0.2
   year = min_year:max_year,
   use_obs = matrix(1L, ncol=1, nrow=n_years),
   lag = list(rep(0, times = 7)),
   ages = list(1:n_ages),
   process_model = c('ar1'),
-  where = list('growth'),
+  where = list('none'),
   where_subindex = 3, # on L1
   how = c(0))
 
@@ -193,18 +193,8 @@ input_a = prepare_wham_input(model_name="ebs_cod_1",
 
 # update some inputs as SS model:
 input_a = post_input_EBSpcod(input_a, SS_report, NAA_SS)
-input_a$map$Ecov_beta = factor(rep(NA, times = length(input_a$map$Ecov_beta))) # no effect on L1
 input_a$random = c("growth_re", "Ecov_re")
-#input_a$random = NULL
 
-#input_a$map$selpars_re = factor(rep(NA, times = length(input_a$par$selpars_re)))
-#input_a$map$logit_selpars = factor(rep(NA, times = length(input_a$par$logit_selpars)))
-#input_a$map$growth_a = factor(rep(NA, times = length(input_a$par$growth_a)))
-#input_a$map$SDgrowth_par = factor(rep(NA, times = length(input_a$par$SDgrowth_par)))
-#input_a$map$M_a = factor(rep(NA, times = length(input_a$par$M_a)))
-#input_a$map$logit_q = factor(rep(NA, times = length(input_a$par$logit_q)))
-#input_a$map$index_paa_pars = factor(rep(NA, times = length(input_a$par$index_paa_pars)))
-  
 #Run model:
 fit_a = fit_wham(input_a, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
 check_convergence(fit_a)
@@ -216,6 +206,19 @@ plot_wham_output(mod = fit_a, dir.main = 'EBS_pcod/fit_a', out.type = 'pdf')
 
 # -------------------------------------------------------------------------
 # Model with Ecov L1
+
+ecov <- list(
+  label = c("Bering10K"),
+  mean = matrix(env2$stand_index, ncol = 1),
+  logsigma = matrix(log(0.2), ncol = 1, nrow = n_years), # sigma = 0.2
+  year = min_year:max_year,
+  use_obs = matrix(1L, ncol=1, nrow=n_years),
+  lag = list(rep(0, times = 7)),
+  ages = list(1:n_ages),
+  process_model = c('ar1'),
+  where = list('growth'),
+  where_subindex = 3, # on L1
+  how = c(0))
 
 # Prepare input object:
 input_b = prepare_wham_input(model_name="ebs_cod_2",
@@ -255,7 +258,7 @@ input_b$random = "Ecov_re"
 #Run model:
 fit_b = fit_wham(input_b, do.osa = FALSE, do.fit = TRUE, do.retro = FALSE, n.newton = 0)
 check_convergence(fit_b)
-save(fit_b, file = 'EBS_pcod/fit_b_001.RData')
+save(fit_b, file = 'EBS_pcod/fit_b.RData')
 
 # Make plots
 dir.create(path = 'EBS_pcod/fit_b')
