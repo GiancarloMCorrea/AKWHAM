@@ -220,3 +220,125 @@ png(filename = 'GOA_pcod/sim_plot_merged.png', width = 190, height = 180, units 
 gridExtra::grid.arrange(p1, g1, p2, layout_matrix = lay_mat)
 dev.off()
 
+# BS pcod simulation plots --------------------------------------------
+
+# Variables to plot:
+nages = 20
+years = 1977:2022
+nyears = length(years)
+save_folder = 'EBS_pcod'
+model_names = c('wham_ecov', 'wham_ar1')
+
+# Model a:
+ts_variables = c('F', 'SSB')
+ts_labels = c('Annual F', 'SSB')
+sc_variables1 = c('log_N1_pars', 'mean_rec_pars') 
+sc_variables2 = c('K', 'Linf', 'L1', 'gamma', 'SD1', 'SDA')
+
+# For Ecov model:
+nsim1 = 115
+results <- readRDS(file.path(save_folder, 'sim_results_b.RDS')) 
+results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1', 'gamma'), times = nsim1) # put right name to growth parameters
+results$par[results$par == 'SD_par'] = rep(c('SD1', 'SDA'), times = nsim1) # put right name to growth parameters
+#results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
+ts <- filter(results, par %in% ts_variables)
+ts = ts %>% dplyr::mutate(re2 = (est-true)/true)
+ts$year = rep(1977:2022, times = 2*nsim1)
+sc1 <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables1,"$", sep=""), collapse = '|'),par))
+sc1 = sc1 %>% dplyr::mutate(re2 = (exp(est)-exp(true))/exp(true))
+sc1 = sc1 %>% mutate(par2 = paste0(par, i))
+sc2 <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables2,"$", sep=""), collapse = '|'),par))
+sc2 = sc2 %>% dplyr::mutate(re2 = (exp(est)-exp(true))/exp(true))
+
+# Make plot SC1:
+sc1$par = factor(sc1$par, levels = sc_variables1)
+p1 = ggplot(sc1, aes(x = par2, y = re2)) + 
+  geom_boxplot(fill = '#606060', alpha = 0.5) + 
+  xlab(NULL) + ylab('Relative error') +
+  scale_x_discrete(labels = c('log_N1_pars1' = expression(N[1*","*1]),
+                              'log_N1_pars2' = expression(F[1]), 
+                              'mean_rec_pars1'   = expression(bar(R)))) +
+  geom_hline(yintercept=0, color=2) +
+  coord_cartesian(ylim=c(-0.5,0.5)) +
+  ggtitle(label = model_names[1])
+
+# Make plot SC2:
+sc2$par = factor(sc2$par, levels = sc_variables2)
+p2 = ggplot(sc2, aes(x = par, y = re2)) + 
+  geom_boxplot(fill = '#606060', alpha = 0.5) + 
+  xlab(NULL) + ylab('Relative error') +
+  scale_x_discrete(labels = c('K' = expression(k),
+                              'Linf'   = expression(L[inf]),
+                              'L1' = expression(L[1]),
+                              'gamma' = expression(gamma),
+                              'SD1' = expression(SD[1]),
+                              'SDA' = expression(SD[A]))) +
+  geom_hline(yintercept=0, color=2) +
+  coord_cartesian(ylim=c(-0.1,0.1)) 
+
+# Make plot TS:
+ts$par = factor(ts$par, levels = ts_variables, labels = ts_labels)
+g = ggplot(ts, aes(year,y= re2)) + 
+  facet_wrap('par', nrow=2, scales = 'free_y')+ 
+  geom_hline(yintercept=0, color=2) +
+  xlab(NULL) + ylab('Relative error') +
+  theme(strip.background = element_blank()) +
+  coord_cartesian(ylim= c(-0.5,0.5)) 
+g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
+
+# For AR1 model:
+nsim2 = 80
+results <- readRDS(file.path(save_folder, 'sim_results_a.RDS')) 
+results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1', 'gamma'), times = nsim2) # put right name to growth parameters
+results$par[results$par == 'SD_par'] = rep(c('SD1', 'SDA'), times = nsim2) # put right name to growth parameters
+#results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
+ts <- filter(results, par %in% ts_variables)
+ts = ts %>% dplyr::mutate(re2 = (est-true)/true)
+ts$year = rep(1977:2022, times = 2*nsim2)
+sc1 <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables1,"$", sep=""), collapse = '|'),par))
+sc1 = sc1 %>% dplyr::mutate(re2 = (exp(est)-exp(true))/exp(true))
+sc1 = sc1 %>% mutate(par2 = paste0(par, i))
+sc2 <- filter(results, is.na(year) &  grepl(paste0(paste("^",sc_variables2,"$", sep=""), collapse = '|'),par))
+sc2 = sc2 %>% dplyr::mutate(re2 = (exp(est)-exp(true))/exp(true))
+
+# Make plot SC1:
+sc1$par = factor(sc1$par, levels = sc_variables1)
+p3 = ggplot(sc1, aes(x = par2, y = re2)) + 
+  geom_boxplot(fill = '#606060', alpha = 0.5) + 
+  xlab(NULL) + ylab('Relative error') +
+  scale_x_discrete(labels = c('log_N1_pars1' = expression(N[1*","*1]),
+                              'log_N1_pars2' = expression(F[1]), 
+                              'mean_rec_pars1'   = expression(bar(R)))) +
+  geom_hline(yintercept=0, color=2) +
+  coord_cartesian(ylim=c(-0.5,0.5)) +
+  ggtitle(label = model_names[2])
+
+# Make plot SC2:
+sc2$par = factor(sc2$par, levels = sc_variables2)
+p4 = ggplot(sc2, aes(x = par, y = re2)) + 
+  geom_boxplot(fill = '#606060', alpha = 0.5) + 
+  xlab(NULL) + ylab('Relative error') +
+  scale_x_discrete(labels = c('K' = expression(k),
+                              'Linf'   = expression(L[inf]),
+                              'L1' = expression(L[1]),
+                              'gamma' = expression(gamma),
+                              'SD1' = expression(SD[1]),
+                              'SDA' = expression(SD[A]))) +
+  geom_hline(yintercept=0, color=2) +
+  coord_cartesian(ylim=c(-0.1,0.1)) 
+
+# Make plot TS:
+ts$par = factor(ts$par, levels = ts_variables, labels = ts_labels)
+g = ggplot(ts, aes(year,y= re2)) + 
+  facet_wrap('par', nrow=2, scales = 'free_y')+ 
+  geom_hline(yintercept=0, color=2) +
+  xlab(NULL) + ylab('Relative error') +
+  theme(strip.background = element_blank()) +
+  coord_cartesian(ylim= c(-0.5,0.5)) 
+g2 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
+
+# Save all sim plots:
+lay_mat = matrix(c(1,2,3,3,4,5,6,6), ncol = 2)
+png(filename = 'EBS_pcod/sim_plot_merged.png', width = 190, height = 220, units = 'mm', res = 500)
+gridExtra::grid.arrange(p1, p2, g1, p3, p4, g2, layout_matrix = lay_mat)
+dev.off()
