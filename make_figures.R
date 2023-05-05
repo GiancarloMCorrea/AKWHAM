@@ -65,7 +65,7 @@ plot_data_overview(datlist = mydat, sectionCex = 0.9)
 r4ss::SSplotData(replist = goacod, subplots = 2, margins = c(1.7,1,2,4.5))
 title(main = 'GOA Pacific cod')
 r4ss::SSplotData(replist = ebscod, subplots = 2, margins = c(1.7,1,2,4.5))
-title(main = 'BS Pacific cod')
+title(main = 'EBS Pacific cod')
 dev.off()
 
 # -------------------------------------------------------------------------
