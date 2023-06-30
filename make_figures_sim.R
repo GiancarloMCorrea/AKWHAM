@@ -171,7 +171,7 @@ model_name = 'wham'
 # Model a:
 results <- readRDS(file.path(save_folder, 'sim_results_a2.RDS'))
 results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1'), times = nsim) # put right name to growth parameters
-results$par[results$par == 'SD_par'] = rep(c('SD1', 'SDA'), times = nsim) # put right name to growth parameters
+results$par[results$par == 'SDgrowth_par'] = rep(c('SD1', 'SDA'), times = nsim) # put right name to growth parameters
 #results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
 ts <- filter(results, par %in% ts_variables)
 ts = ts %>% dplyr::mutate(re2 = (exp(est)-exp(true))/exp(true))
@@ -189,7 +189,7 @@ p1 = ggplot(sc1, aes(x = par, y = re2)) +
   scale_x_discrete(labels = c('log_N1_pars' = expression(N[1*","*1]),
                               'mean_rec_pars'   = expression(bar(R)))) +
   geom_hline(yintercept=0, color=2) +
-  coord_cartesian(ylim=c(-0.3,0.3)) 
+  coord_cartesian(ylim=c(-0.5,0.5)) 
 
 # Make plot SC2:
 sc2$par = factor(sc2$par, levels = sc_variables2)
@@ -211,14 +211,13 @@ g = ggplot(ts, aes(year,y= re2)) +
   geom_hline(yintercept=0, color=2) +
   xlab(NULL) + ylab('Relative error') +
   theme(strip.background = element_blank()) +
-  coord_cartesian(ylim= c(-0.4,0.4)) 
+  coord_cartesian(ylim= c(-0.7,0.7)) 
 g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
 # Save all sim plots:
 lay_mat = matrix(c(1,2,3,2), ncol = 2)
-png(filename = 'GOA_pcod/sim_plot_merged.png', width = 190, height = 180, units = 'mm', res = 500)
 gridExtra::grid.arrange(p1, g1, p2, layout_matrix = lay_mat)
-dev.off()
+ggsave(filename = 'GOA_pcod/sim_plot_merged.png', width = 190, height = 180, units = 'mm', dpi = 500)
 
 # BS pcod simulation plots --------------------------------------------
 

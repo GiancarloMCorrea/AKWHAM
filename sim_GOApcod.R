@@ -34,12 +34,15 @@ OMinput$data$index_caal_Neff = OMinput$data$index_caal_Neff*(1/0.14)
 OMinput$data$catch_caal_Neff = OMinput$data$catch_caal_Neff*(1/0.14)
 OMinput$data$obs$val[OMinput$data$obs$type == 'catchcaal' | OMinput$data$obs$type == 'indexcaal'] = OMinput$data$obs$val[OMinput$data$obs$type == 'catchcaal' | OMinput$data$obs$type == 'indexcaal']*(1/0.14)
 #Fix selectivity:
-OMinput$map$logit_selpars = factor(rep(NA, times = length(OMinput$map$logit_selpars)))
-OMinput$map$selpars_re = factor(rep(NA, times = length(OMinput$map$selpars_re)))
+#OMinput$map$logit_selpars = factor(rep(NA, times = length(OMinput$map$logit_selpars)))
+#OMinput$map$selpars_re = factor(rep(NA, times = length(OMinput$map$selpars_re)))
 # Fix F1:
 #OMinput$map$log_F1 = factor(rep(NA, times = length(OMinput$map$log_F1)))
 # Fix Q:
 #OMinput$map$logit_q = factor(rep(NA, times = length(OMinput$map$logit_q)))
+# Fix M: (problematic parameter):
+OMinput$map$M_a = factor(NA)
+OMinput$map$M_re = factor(rep(NA, times = length(OMinput$map$M_re)))
 # Initial values:
 OMinput$par = fit_a$parList
 # Run OM again:
@@ -56,7 +59,7 @@ om$sdrep
 ### Run and save the simulations
 #test <- run_em(1)
 true <- summary(om$sdrep, select='all')[,1]
-sfInit(parallel=TRUE, cpus=10)
+sfInit(parallel=TRUE, cpus=18)
 sfExport('run_em','true','om')
 out <- sfLapply(1:nsim, run_em)
 sfStop()
