@@ -49,7 +49,7 @@ run_em2 <- function(i){
                             n.newton=0),
                    error=function(e) "error")
   if(class(tfit) == "character" && tfit=='error') return(NULL)
-  rep <- tfit$report(tfit$opt$par)
+  rep <- tfit$report()
   ind <- which.max(abs(tfit$gr(tfit$opt$par)))
   stopifnot(ind %in% 1:length(tfit$opt$par))
   maxgrad <- abs(tfit$gr(tfit$opt$par)[ind])
