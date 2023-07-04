@@ -4,6 +4,7 @@ library(dplyr)
 library(ggplot2)
 theme_set(theme_bw())
 
+# -------------------------------------------------------------------------
 # GOA pollock simulation plots --------------------------------------------
 
 # Variables to plot:
@@ -92,10 +93,10 @@ d <- ggplot(waa, aes(year,re)) +
   facet_wrap('age')+ 
   geom_hline(yintercept=0, color=2)+
   ylab('Relative error') + xlab(NULL) +
-  coord_cartesian(ylim= c(-0.2,0.2)) 
+  coord_cartesian(ylim= c(-0.2,0.2)) +
+  theme(axis.text.x =element_text(size = 8))
 add_ci(d, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
-ggsave(filename = file.path(save_folder, 'sim_waa_plot_b.png'), width = 190, height = 140, units = 'mm', dpi = 500)
-
+ggsave(filename = file.path(save_folder, 'sim_waa_plot_b.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
 
 ## Model c:
 ts_variables = c('log_F', 'log_SSB')
@@ -145,16 +146,18 @@ g <- ggplot(waa, aes(year,re)) +
   facet_wrap('age')+ 
   geom_hline(yintercept=0, color=2)+
   ylab('Relative error') + xlab(NULL)+
-  coord_cartesian(ylim= c(-0.2,0.2)) 
+  coord_cartesian(ylim= c(-0.2,0.2)) +
+  theme(axis.text.x =element_text(size = 8))
 add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
-ggsave(filename = file.path(save_folder, 'sim_waa_plot_c.png'), width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = file.path(save_folder, 'sim_waa_plot_c.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
 
 # Save all sim plots:
 lay_mat = matrix(c(1,2,2,3,4,4,5,6,6), ncol = 3)
-png(filename = 'GOA_pollock/sim_plot_merged.png', width = 190, height = 180, units = 'mm', res = 500)
+jpeg(filename = 'GOA_pollock/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, g1, p2, g2, p3, g3, layout_matrix = lay_mat)
 dev.off()
 
+# -------------------------------------------------------------------------
 # GOA pcod simulation plots --------------------------------------------
 
 # Variables to plot:
@@ -169,7 +172,7 @@ save_folder = 'GOA_pcod'
 model_name = 'wham'
 
 # Model a:
-results <- readRDS(file.path(save_folder, 'sim_results_a2.RDS'))
+results <- readRDS(file.path(save_folder, 'sim_results_a.RDS'))
 results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1'), times = nsim) # put right name to growth parameters
 results$par[results$par == 'SDgrowth_par'] = rep(c('SD1', 'SDA'), times = nsim) # put right name to growth parameters
 #results %>% filter(parnum==maxpar) %>% pull(maxgrad) %>% summary
@@ -216,10 +219,12 @@ g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE
 
 # Save all sim plots:
 lay_mat = matrix(c(1,2,3,2), ncol = 2)
+jpeg(filename = 'GOA_pcod/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, g1, p2, layout_matrix = lay_mat)
-ggsave(filename = 'GOA_pcod/sim_plot_merged.png', width = 190, height = 180, units = 'mm', dpi = 500)
+dev.off()
 
-# BS pcod simulation plots --------------------------------------------
+# -------------------------------------------------------------------------
+# EBS pcod simulation plots --------------------------------------------
 
 # Variables to plot:
 nages = 20
@@ -286,7 +291,7 @@ g = ggplot(ts, aes(year,y= re2)) +
 g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
 # For AR1 model:
-nsim2 = 80
+nsim2 = 138
 results <- readRDS(file.path(save_folder, 'sim_results_a.RDS')) 
 results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1', 'gamma'), times = nsim2) # put right name to growth parameters
 results$par[results$par == 'SD_par'] = rep(c('SD1', 'SDA'), times = nsim2) # put right name to growth parameters
@@ -338,6 +343,6 @@ g2 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE
 
 # Save all sim plots:
 lay_mat = matrix(c(1,2,3,3,4,5,6,6), ncol = 2)
-png(filename = 'EBS_pcod/sim_plot_merged.png', width = 190, height = 220, units = 'mm', res = 500)
+jpeg(filename = 'EBS_pcod/sim_plot_merged.jpg', width = 170, height = 210, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, p2, g1, p3, p4, g2, layout_matrix = lay_mat)
 dev.off()
