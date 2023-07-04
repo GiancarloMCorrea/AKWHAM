@@ -14,7 +14,7 @@ nyears = length(years)
 save_folder = 'GOA_pollock'
 model_names = c('wham_ewaa', 'wham_iid', 'wham_2dar1')
 
-# Model a:
+# Model a: ------------------------------------------
 ts_variables = c('log_F', 'log_SSB')
 ts_labels = c('Annual F', 'SSB')
 sc_variables = c('log_N1_pars', 'mean_rec_pars') # 'WAA_a', 'sigma_WAA'
@@ -47,7 +47,21 @@ g = ggplot(ts, aes(year,y= re2)) +
   theme(strip.background = element_blank())
 g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
-# Model b:
+# Stability plot:
+stab_df = results[results$par == 'log_SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  sd_val = sd((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_names[1])
+}
+stab_goa_1 = dplyr::bind_rows(save_df)
+  
+
+# Model b: -----------------------------------------------------
 ts_variables = c('log_F', 'log_SSB')
 ts_labels = c('Annual F', 'SSB')
 sc_variables = c('log_N1_pars', 'mean_rec_pars', 'sigma_WAA') # 'WAA_a', 'sigma_WAA'
@@ -98,7 +112,20 @@ d <- ggplot(waa, aes(year,re)) +
 add_ci(d, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
 ggsave(filename = file.path(save_folder, 'sim_waa_plot_b.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
 
-## Model c:
+# Stability plot:
+stab_df = results[results$par == 'log_SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  sd_val = sd((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_names[2])
+}
+stab_goa_2 = dplyr::bind_rows(save_df)
+
+# Model c: ------------------------------------------------
 ts_variables = c('log_F', 'log_SSB')
 ts_labels = c('Annual F', 'SSB')
 sc_variables = c('log_N1_pars', 'mean_rec_pars', 'sigma_WAA', 'rho_WAA_a', 'rho_WAA_y') # 'WAA_a', 'sigma_WAA'
@@ -151,11 +178,35 @@ g <- ggplot(waa, aes(year,re)) +
 add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
 ggsave(filename = file.path(save_folder, 'sim_waa_plot_c.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
 
-# Save all sim plots:
+# Stability plot:
+stab_df = results[results$par == 'log_SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  sd_val = sd((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_names[3])
+}
+stab_goa_3 = dplyr::bind_rows(save_df)
+
+# Save all sim plots: ---------------------------------------------
 lay_mat = matrix(c(1,2,2,3,4,4,5,6,6), ncol = 3)
 jpeg(filename = 'GOA_pollock/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, g1, p2, g2, p3, g3, layout_matrix = lay_mat)
 dev.off()
+
+# Save stability plot: --------------------------------------------
+plot_df = rbind(stab_goa_1, stab_goa_2, stab_goa_3)
+plot_df$model = factor(plot_df$model, levels = model_names)
+
+ggplot(plot_df, aes(x = rep, y = value)) +
+  geom_line() +
+  xlab('Number of replicates') +
+  ylab(NULL) +
+  facet_grid(factor(type) ~ model, scales = 'free_y')
+ggsave(filename = 'GOA_pollock/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 400)
 
 # -------------------------------------------------------------------------
 # GOA pcod simulation plots --------------------------------------------
@@ -217,11 +268,36 @@ g = ggplot(ts, aes(year,y= re2)) +
   coord_cartesian(ylim= c(-0.7,0.7)) 
 g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
-# Save all sim plots:
+# Stability plot:
+stab_df = results[results$par == 'log_SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  sd_val = sd((exp(tmp$est) - exp(tmp$true))/exp(tmp$true))
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_name)
+}
+stab_goapcod = dplyr::bind_rows(save_df)
+
+# Save all sim plots: ------------------------------
 lay_mat = matrix(c(1,2,3,2), ncol = 2)
 jpeg(filename = 'GOA_pcod/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, g1, p2, layout_matrix = lay_mat)
 dev.off()
+
+# Save stability plot: --------------------------------------------
+plot_df = stab_goapcod
+plot_df$model = factor(plot_df$model, levels = model_name)
+
+ggplot(plot_df, aes(x = rep, y = value)) +
+  geom_line() +
+  xlab('Number of replicates') +
+  ylab(NULL) +
+  facet_grid(factor(type) ~ model, scales = 'free_y')
+ggsave(filename = 'GOA_pcod/sim_stability.jpg', width = 85, height = 120, units = 'mm', dpi = 400)
+
 
 # -------------------------------------------------------------------------
 # EBS pcod simulation plots --------------------------------------------
@@ -239,7 +315,7 @@ ts_labels = c('Annual F', 'SSB')
 sc_variables1 = c('log_N1_pars', 'mean_rec_pars') 
 sc_variables2 = c('K', 'Linf', 'L1', 'gamma', 'SD1', 'SDA')
 
-# For Ecov model:
+# For Ecov model: ----------------------------------------
 nsim1 = 115
 results <- readRDS(file.path(save_folder, 'sim_results_b.RDS')) 
 results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1', 'gamma'), times = nsim1) # put right name to growth parameters
@@ -290,7 +366,20 @@ g = ggplot(ts, aes(year,y= re2)) +
   coord_cartesian(ylim= c(-0.5,0.5)) 
 g1 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
-# For AR1 model:
+# Stability plot:
+stab_df = results[results$par == 'SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((tmp$est - tmp$true)/tmp$true)
+  sd_val = sd((tmp$est - tmp$true)/tmp$true)
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_names[1])
+}
+stab_ebs_1 = dplyr::bind_rows(save_df)
+
+# For AR1 model: ----------------------------------------------
 nsim2 = 138
 results <- readRDS(file.path(save_folder, 'sim_results_a.RDS')) 
 results$par[results$par == 'growth_a'] = rep(c('K', 'Linf', 'L1', 'gamma'), times = nsim2) # put right name to growth parameters
@@ -341,8 +430,32 @@ g = ggplot(ts, aes(year,y= re2)) +
   coord_cartesian(ylim= c(-0.5,0.5)) 
 g2 = add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE) # '#2171b5'
 
-# Save all sim plots:
+# Stability plot:
+stab_df = results[results$par == 'SSB', ]
+this_rep = sort(unique(stab_df$rep))[1:100]
+save_df = list()
+for(i in seq_along(this_rep)) {
+  tmp = stab_df[stab_df$rep %in% this_rep[1:i], ]
+  med_val = median((tmp$est - tmp$true)/tmp$true)
+  sd_val = sd((tmp$est - tmp$true)/tmp$true)
+  save_df[[i]] = data.frame(rep = i, value = c(med_val, sd_val), type = c('Bias', 'Precision'),
+                            model = model_names[2])
+}
+stab_ebs_2 = dplyr::bind_rows(save_df)
+
+# Save all sim plots: ----------------------------------------
 lay_mat = matrix(c(1,2,3,3,4,5,6,6), ncol = 2)
 jpeg(filename = 'EBS_pcod/sim_plot_merged.jpg', width = 170, height = 210, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, p2, g1, p3, p4, g2, layout_matrix = lay_mat)
 dev.off()
+
+# Save stability plot: --------------------------------------------
+plot_df = rbind(stab_ebs_1, stab_ebs_2)
+plot_df$model = factor(plot_df$model, levels = model_names)
+
+ggplot(plot_df, aes(x = rep, y = value)) +
+  geom_line() +
+  xlab('Number of replicates') +
+  ylab(NULL) +
+  facet_grid(factor(type) ~ model, scales = 'free_y')
+ggsave(filename = 'EBS_pcod/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 400)
