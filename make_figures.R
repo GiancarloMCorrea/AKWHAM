@@ -391,6 +391,11 @@ jpeg(filename = 'GOA_pcod/main_GOApcod.jpg', width = 170, height = 70, units = '
 gridExtra::grid.arrange(p1, p2, ncol = 2)
 dev.off()
 
+# Plot Ecov:
+jpeg(filename = 'GOA_pcod/env_index_Q.jpg', width = 85, height = 60, units = 'mm', res = 400)
+plot_ecov_fit(fit_a, label = ' ', myCol = "#377EB8", yLab = 'Environmental index')
+dev.off()
+
 # Make selectivity plot (compare SS and WHAM)
 
 all_years = 1977:2022
@@ -625,4 +630,3 @@ ggplot(plot_data, aes(x = year, y = len)) +
                      legend.position = 'top') +
   facet_grid(type ~ fleet)
 ggsave(filename = 'EBS_pcod/selex_EBSpcod.jpg', width = 170, height = 210, units = 'mm', dpi = 400)
-

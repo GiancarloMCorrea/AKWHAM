@@ -391,7 +391,7 @@ post_input_EBSpcod = function(input, SS_report, NAA_SS) {
   return(input)
 }
 
-plot_ecov_fit <- function(mod, label = "", myCol = ''){
+plot_ecov_fit <- function(mod, label = "", myCol = '', yLab = 'Temperature Bering10K index'){
 
   require(ggplot2);require(dplyr)
 
@@ -431,7 +431,7 @@ plot_ecov_fit <- function(mod, label = "", myCol = ''){
     geom_pointrange(fatten=2) +
     theme_bw()+
     annotate("text", label = label, x = -Inf, y = Inf, hjust = -1, vjust = 1.5) +
-    labs(y='Temperature Bering10K index', x=NULL) 
+    labs(y=yLab, x=NULL) 
 
   return(g0)
 }
@@ -499,3 +499,4 @@ plot_data_overview <- function(datlist, sectionCex = 1, fleetCex = 0.5){
   axis(1, at=seq(1970,dd$endyr, by=5))
   return(invisible(dat))
 }
+

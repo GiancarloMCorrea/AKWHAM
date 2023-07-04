@@ -295,8 +295,8 @@ ggplot(plot_df, aes(x = rep, y = value)) +
   geom_line() +
   xlab('Number of replicates') +
   ylab(NULL) +
-  facet_grid(factor(type) ~ model, scales = 'free_y')
-ggsave(filename = 'GOA_pcod/sim_stability.jpg', width = 85, height = 120, units = 'mm', dpi = 400)
+  facet_grid(model ~ factor(type), scales = 'free_y')
+ggsave(filename = 'GOA_pcod/sim_stability.jpg', width = 170, height = 85, units = 'mm', dpi = 400)
 
 
 # -------------------------------------------------------------------------
