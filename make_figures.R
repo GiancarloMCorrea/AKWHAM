@@ -42,7 +42,7 @@ edge [arrowhead = none]
 tmp = DiagrammeRsvg::export_svg(diag1)
 html_print(HTML(tmp))
 tmp = charToRaw(tmp) # flatten
-rsvg::rsvg_svg(tmp, "diagram2.svg", width = 1700) # saved graph as png in current working directory
+rsvg::rsvg_svg(tmp, "diagram2.svg", width = 2100) # saved graph as png in current working directory
 
 bitmap <- rsvg::rsvg("diagram2.svg")
 dim(bitmap)
@@ -56,15 +56,15 @@ require(r4ss)
 # GOA pollock:
 mydat = readRDS('aux_data/datfile.RDS')
 
-ebscod = r4ss::SS_output('SS_models/EBS_pcod')
-goacod = r4ss::SS_output('SS_models/GOA_pcod')
+ebscod = r4ss::SS_output('SS_models/EBS_pcod', covar = FALSE)
+goacod = r4ss::SS_output('SS_models/GOA_pcod', covar = FALSE)
 
-png(filename = 'Data_cases.png', width = 190, height = 160, units = 'mm', res = 500)
+jpeg(filename = 'Data_cases.jpg', width = 170, height = 150, units = 'mm', res = 400)
 par(mfrow = c(2,2))
 plot_data_overview(datlist = mydat, sectionCex = 0.9)
-r4ss::SSplotData(replist = goacod, subplots = 2, margins = c(1.7,1,2,4.5))
+r4ss::SSplotData(replist = goacod, subplot = 2, margins = c(1.7,1,2,4.5))
 title(main = 'GOA Pacific cod')
-r4ss::SSplotData(replist = ebscod, subplots = 2, margins = c(1.7,1,2,4.5))
+r4ss::SSplotData(replist = ebscod, subplot = 2, margins = c(1.7,1,2,4.5))
 title(main = 'EBS Pacific cod')
 dev.off()
 
@@ -221,24 +221,24 @@ p4 = ggplot(WAA_plot, aes(x = year, y = value, color=age)) +
         legend.background = element_blank())
 
 # Merge plots and save:
-png(filename = 'GOA_pollock/main_GOApollock.png', width = 190, height = 160, units = 'mm', res = 500)
+jpeg(filename = 'GOA_pollock/main_GOApollock.jpg', width = 170, height = 150, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, p2, p3, p4, nrow = 2)
 dev.off()
 
 # Plot WAA fits:
 plot_waa_fit(fit = fit_b, minyr=1990, maxyr=2009)
-ggsave(filename = 'GOA_pollock/summary_WAA_fit_b.png', width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/summary_WAA_fit_b.jpg', width = 170, height = 140, units = 'mm', dpi = 400)
 plot_waa_fit(fit = fit_c, minyr=1990, maxyr=2009)
-ggsave(filename = 'GOA_pollock/summary_WAA_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/summary_WAA_fit_c.jpg', width = 170, height = 140, units = 'mm', dpi = 400)
 plot_waa_fit(fit = fit_b, minyr=1977, maxyr=2021, by.cohort = FALSE)
-ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_b.png', width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_b.jpg', width = 170, height = 140, units = 'mm', dpi = 400)
 plot_waa_fit(fit = fit_c, minyr=1977, maxyr=2021, by.cohort = FALSE)
-ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_c.png', width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/summary_WAA_year_fit_c.jpg', width = 170, height = 140, units = 'mm', dpi = 400)
 
 # Plot WAA proj:
 plot_waa_proj(mods = list(proj_a, proj_b, proj_c), minyr=2020, maxyr=2024, myCols = thisCols[1:3], 
               modNames = model_names[2:4], projYear = 2021)
-ggsave(filename = 'GOA_pollock/summary_WAA_proj.png', width = 190, height = 140, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/summary_WAA_proj.jpg', width = 170, height = 140, units = 'mm', dpi = 400)
 
 # Make selectivity plot (compare ADMB and WHAM)
 
@@ -298,7 +298,7 @@ ggplot(plot_data, aes(x = year, y = age)) +
                      plot.title=element_text(size=11),
                      legend.position = 'top') +
   facet_grid(type ~ fleet)
-ggsave(filename = 'GOA_pollock/selex_GOApollock.png', width = 190, height = 160, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pollock/selex_GOApollock.jpg', width = 170, height = 150, units = 'mm', dpi = 400)
 
 
 # -------------------------------------------------------------------------
@@ -387,7 +387,7 @@ p2 = ggplot(plot_data, aes(ages, LAA, ymin=len_min, ymax=len_max,
         legend.background = element_blank())
 
 # Merge plots:
-png(filename = 'GOA_pcod/main_GOApcod.png', width = 190, height = 70, units = 'mm', res = 500)
+jpeg(filename = 'GOA_pcod/main_GOApcod.jpg', width = 170, height = 70, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, p2, ncol = 2)
 dev.off()
 
@@ -437,7 +437,7 @@ ggplot(plot_data, aes(x = year, y = len)) +
                      plot.title=element_text(size=11),
                      legend.position = 'top') +
   facet_grid(type ~ fleet)
-ggsave(filename = 'GOA_pcod/selex_GOApcod.png', width = 190, height = 130, units = 'mm', dpi = 500)
+ggsave(filename = 'GOA_pcod/selex_GOApcod.jpg', width = 170, height = 120, units = 'mm', dpi = 400)
 
 # -------------------------------------------------------------------------
 # EBS pcod plots ----------------------------------------------------------
@@ -538,7 +538,7 @@ p3 = plot_ecov_fit(fit_a, label = 'C', myCol = "#377EB8")
 p4 = plot_ecov_fit(fit_b, label = 'D', myCol = "#4DAF4A")
 
 # Merge plots:
-png(filename = 'EBS_pcod/main_EBSpcod.png', width = 190, height = 160, units = 'mm', res = 500)
+jpeg(filename = 'EBS_pcod/main_EBSpcod.jpg', width = 170, height = 150, units = 'mm', res = 400)
 gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
 dev.off()
 
@@ -564,7 +564,7 @@ b2 = plot_ecov_fit(fit_b_01, label = 'obs error = 0.1', myCol = "#4DAF4A")
 b3 = plot_ecov_fit(fit_b_001, label = 'obs error = 0.01', myCol = "#4DAF4A")
 
 # Merge plots:
-png(filename = 'EBS_pcod/ecov_sigma_EBSpcod.png', width = 190, height = 220, units = 'mm', res = 500)
+jpeg(filename = 'EBS_pcod/ecov_sigma_EBSpcod.jpg', width = 170, height = 210, units = 'mm', res = 400)
 gridExtra::grid.arrange(a1, b1, a2, b2, a3, b3, ncol = 2)
 dev.off()
 
@@ -624,5 +624,5 @@ ggplot(plot_data, aes(x = year, y = len)) +
                      plot.title=element_text(size=11),
                      legend.position = 'top') +
   facet_grid(type ~ fleet)
-ggsave(filename = 'EBS_pcod/selex_EBSpcod.png', width = 190, height = 220, units = 'mm', dpi = 500)
+ggsave(filename = 'EBS_pcod/selex_EBSpcod.jpg', width = 170, height = 210, units = 'mm', dpi = 400)
 

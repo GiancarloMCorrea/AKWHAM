@@ -98,7 +98,7 @@ input_a = prepare_wham_input(model_name="pollock_a",
 # update some inputs as base WHAM model:
 input_a = post_input_pollock(input_a, input)
 # no random effects:
-input_a$random <- NULL
+input_a$random <- c("log_NAA", "q_re")
 # Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_a$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
@@ -156,7 +156,7 @@ input_b = prepare_wham_input(model_name = "pollock_b",
 # update some inputs:
 input_b = post_input_pollock(input_b, input)
 # random WAA only
-input_b$random <- c('WAA_re')
+input_b$random <- c('WAA_re', "log_NAA", "q_re")
 # Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_b$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
@@ -172,7 +172,7 @@ dir.create(path = 'GOA_pollock/fit_b')
 plot_wham_output(mod = fit_b, dir.main = 'GOA_pollock/fit_b', out.type = 'pdf')
 
 # Make projections:
-proj_b = project_wham(model = fit_b, MakeADFun.silent = TRUE, proj.opts = list(cont.WAA.re = 1))
+proj_b = project_wham(model = fit_b, MakeADFun.silent = TRUE)
 save(proj_b, file = 'GOA_pollock/proj_b.RData')
 
 # -------------------------------------------------------------------------
@@ -207,7 +207,7 @@ input_c = prepare_wham_input(model_name = "pollock_c",
 # update some inputs:
 input_c = post_input_pollock(input_c, input)
 # random WAA only
-input_c$random <- c('WAA_re')
+input_c$random <- c('WAA_re', "log_NAA", "q_re")
 # Fix survey selex for age 3,4, and 8 to reach convergence:
 tmp = matrix(input_c$map$logit_selpars, nrow = 7)
 tmp[2,c(3:4,8)] = NA
@@ -223,5 +223,5 @@ dir.create(path = 'GOA_pollock/fit_c')
 plot_wham_output(mod = fit_c, dir.main = 'GOA_pollock/fit_c', out.type = 'pdf')
 
 # Make projections:
-proj_c = project_wham(model = fit_c, MakeADFun.silent = TRUE, proj.opts = list(cont.WAA.re = 1))
+proj_c = project_wham(model = fit_c, MakeADFun.silent = TRUE)
 save(proj_c, file = 'GOA_pollock/proj_c.RData')
