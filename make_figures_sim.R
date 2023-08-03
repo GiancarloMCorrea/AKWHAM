@@ -110,7 +110,7 @@ d <- ggplot(waa, aes(year,re)) +
   coord_cartesian(ylim= c(-0.2,0.2)) +
   theme(axis.text.x =element_text(size = 8))
 add_ci(d, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
-ggsave(filename = file.path(save_folder, 'sim_waa_plot_b.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
+ggsave(filename = file.path(save_folder, 'sim_waa_plot_b.jpg'), width = 170, height = 130, units = 'mm', dpi = 500)
 
 # Stability plot:
 stab_df = results[results$par == 'log_SSB', ]
@@ -176,7 +176,7 @@ g <- ggplot(waa, aes(year,re)) +
   coord_cartesian(ylim= c(-0.2,0.2)) +
   theme(axis.text.x =element_text(size = 8))
 add_ci(g, ci=c(.5,.95), alpha=c(.4,.4), fill = '#606060', showMedian = TRUE)
-ggsave(filename = file.path(save_folder, 'sim_waa_plot_c.jpg'), width = 170, height = 130, units = 'mm', dpi = 400)
+ggsave(filename = file.path(save_folder, 'sim_waa_plot_c.jpg'), width = 170, height = 130, units = 'mm', dpi = 500)
 
 # Stability plot:
 stab_df = results[results$par == 'log_SSB', ]
@@ -193,7 +193,7 @@ stab_goa_3 = dplyr::bind_rows(save_df)
 
 # Save all sim plots: ---------------------------------------------
 lay_mat = matrix(c(1,2,2,3,4,4,5,6,6), ncol = 3)
-jpeg(filename = 'GOA_pollock/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
+jpeg(filename = 'GOA_pollock/Figure-4.jpg', width = 170, height = 160, units = 'mm', res = 500)
 gridExtra::grid.arrange(p1, g1, p2, g2, p3, g3, layout_matrix = lay_mat)
 dev.off()
 
@@ -206,7 +206,7 @@ ggplot(plot_df, aes(x = rep, y = value)) +
   xlab('Number of replicates') +
   ylab(NULL) +
   facet_grid(factor(type) ~ model, scales = 'free_y')
-ggsave(filename = 'GOA_pollock/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 400)
+ggsave(filename = 'GOA_pollock/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 500)
 
 # -------------------------------------------------------------------------
 # GOA pcod simulation plots --------------------------------------------
@@ -283,7 +283,7 @@ stab_goapcod = dplyr::bind_rows(save_df)
 
 # Save all sim plots: ------------------------------
 lay_mat = matrix(c(1,2,3,2), ncol = 2)
-jpeg(filename = 'GOA_pcod/sim_plot_merged.jpg', width = 170, height = 160, units = 'mm', res = 400)
+jpeg(filename = 'GOA_pcod/Figure-6.jpg', width = 170, height = 160, units = 'mm', res = 500)
 gridExtra::grid.arrange(p1, g1, p2, layout_matrix = lay_mat)
 dev.off()
 
@@ -296,7 +296,7 @@ ggplot(plot_df, aes(x = rep, y = value)) +
   xlab('Number of replicates') +
   ylab(NULL) +
   facet_grid(model ~ factor(type), scales = 'free_y')
-ggsave(filename = 'GOA_pcod/sim_stability.jpg', width = 170, height = 85, units = 'mm', dpi = 400)
+ggsave(filename = 'GOA_pcod/sim_stability.jpg', width = 170, height = 85, units = 'mm', dpi = 500)
 
 
 # -------------------------------------------------------------------------
@@ -445,7 +445,7 @@ stab_ebs_2 = dplyr::bind_rows(save_df)
 
 # Save all sim plots: ----------------------------------------
 lay_mat = matrix(c(1,2,3,3,4,5,6,6), ncol = 2)
-jpeg(filename = 'EBS_pcod/sim_plot_merged.jpg', width = 170, height = 210, units = 'mm', res = 400)
+jpeg(filename = 'EBS_pcod/Figure-8.jpg', width = 170, height = 210, units = 'mm', res = 500)
 gridExtra::grid.arrange(p1, p2, g1, p3, p4, g2, layout_matrix = lay_mat)
 dev.off()
 
@@ -458,4 +458,4 @@ ggplot(plot_df, aes(x = rep, y = value)) +
   xlab('Number of replicates') +
   ylab(NULL) +
   facet_grid(factor(type) ~ model, scales = 'free_y')
-ggsave(filename = 'EBS_pcod/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 400)
+ggsave(filename = 'EBS_pcod/sim_stability.jpg', width = 170, height = 120, units = 'mm', dpi = 500)
