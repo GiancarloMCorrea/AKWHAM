@@ -1,13 +1,15 @@
 source('aux_fun.R')
 require(ggplot2)
-require(rsvg)
-require(DiagrammeRsvg)
 theme_set(theme_bw())
 
 # Make diagram ------------------------------------------------------------
-
+require(glue)
 require(DiagrammeR)
 require(htmltools)
+require(DiagrammeRsvg)
+require(svglite)
+require(rsvg)
+require(tiff)
 
 diag1 = DiagrammeR::grViz("digraph {
 
@@ -48,6 +50,9 @@ HeightCM = 8
 diag1 %>% export_svg %>% charToRaw %>% 
   rsvg(width = WidthCM *(DPI/2.54), height = HeightCM *(DPI/2.54)) %>% 
   jpeg::writeJPEG("Figure-1.jpg", quality = 1)
+
+# Now you have to modify the DPI using GIMP. Load the jpg file just created and go to
+# Image > Scale Image, and change resolution (px/in) to 500
 
 # Make data plots ---------------------------------------------------------
 
