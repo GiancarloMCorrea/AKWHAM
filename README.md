@@ -1,4 +1,4 @@
-In this repository, you will find the code to run the study cases found in Correa et al. (in review).
+In this repository, you will find the code to run the study cases found in *Correa et al. 2023. Modelling time-varying growth in state-space stock assessments. ICES Journal of Marine Sciences*
 
 1. **run_XXXX.R**: Scripts used to run the WHAM models for each case study.
 2. **sim_XXXX.R**: Scripts used to run the self-test simulation for each case study.
