@@ -1,4 +1,6 @@
-In this repository, you will find the code to run the study cases found in *Correa et al. 2023. Modelling time-varying growth in state-space stock assessments. ICES Journal of Marine Sciences* (doi: 10.1093/icesjms/fsad133)
+In this repository, you will find the code to run the study cases found in: 
+
+> Correa, G.M., Monnahan, C.C., Sullivan, J.Y., Thorson, J.T., Punt, A.E., 2023. Modelling time-varying growth in state-space stock assessments. ICES Journal of Marine Science 80, 2036–2049. [https://doi.org/10.1093/icesjms/fsad133](https://doi.org/10.1093/icesjms/fsad133)
 
 1. **run_XXXX.R**: Scripts used to run the WHAM models for each case study.
 2. **sim_XXXX.R**: Scripts used to run the self-test simulation for each case study.
